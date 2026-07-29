@@ -15,6 +15,7 @@ converts the page you are reading, and `render_recipe.py` for a recipe JSON on d
 python3 tests/parity.py                              # Python and JS renderers agree byte-for-byte
 node tests/pipeline.mjs                              # model output -> validation -> tree -> markup
 node tests/providers.mjs                             # streaming, fallback ladders, failure paths
+node tests/security.mjs                              # hostile input through every rendered field
 python3 render_recipe.py recipes/foo.json            # -> recipes/foo.html (regenerates; .html is gitignored)
 python3 extension/icons/make_icons.py                # regenerate toolbar icons
 ```
@@ -175,3 +176,23 @@ running step's words, so it illustrates rather than decorates; the model call ma
 nothing on purpose, so a long wait rotates dishes. Every frame of every scene must be
 the same box — `normalise()` pads them and `tests/pipeline.mjs` asserts it, otherwise
 the art jitters as frames swap.
+
+### The one security-critical path
+
+`viewer.js` renders with `innerHTML`, and its input is model output derived from page
+text — so a page can aim content at it. That HTML lands in an **extension page**,
+which has `chrome.*` access, meaning a single missed escape there could read
+`chrome.storage.local` and exfiltrate the user's API key. Consequences of that:
+
+- Every interpolation in `layout.js` and `render_recipe.py` goes through `esc()` for
+  text or `escAttr()`/`html.escape(quote=True)` for attribute values. Adding an
+  interpolation without one is the highest-severity mistake available in this repo.
+- The `source` field is the only thing rendered as a link, only when it starts with
+  `http`, and `background.js` overwrites it with the real tab URL before rendering —
+  so the model cannot choose the link target.
+- `tests/security.mjs` pushes script tags, attribute break-outs, `javascript:` URLs
+  and prototype-pollution keys through every field of both renderers, and asserts on
+  parsed attribute names rather than a text search (quotes in text content are inert,
+  and `&quot;` inside a value cannot close it — a naive regex reports both as holes).
+- `diagnostics()` scrubs key-shaped strings, because that report goes to the
+  clipboard and a provider may echo the `Authorization` header into an error body.

@@ -67,9 +67,29 @@ export function errorDetail(run) {
   return bits.join(" · ");
 }
 
+/**
+ * Anything that looks like a credential, removed.
+ *
+ * Nothing here ever writes the key into a run, but a provider that echoes the
+ * Authorization header into its error body would — and this report goes to the
+ * clipboard, so it is the one place a key could escape by accident.
+ */
+const SECRETS = [
+  /\bsk-[A-Za-z0-9_-]{12,}/g, // OpenAI, OpenRouter, Anthropic
+  /\b(?:Bearer|x-api-key:?)\s+[A-Za-z0-9._~+/=-]{12,}/gi,
+  /\bAIza[0-9A-Za-z_-]{20,}/g, // Google
+  /\bhf_[A-Za-z0-9]{16,}/g, // Hugging Face
+  /\bgh[pousr]_[A-Za-z0-9]{16,}/g, // GitHub
+  /\b[A-Za-z0-9_-]{24,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{20,}\b/g, // JWT
+];
+
+export function scrub(text) {
+  return SECRETS.reduce((out, pattern) => out.replace(pattern, "[redacted]"), String(text));
+}
+
 /** Everything needed to describe a failure, and no API key. */
 export function diagnostics(run) {
-  return JSON.stringify(
+  return scrub(JSON.stringify(
     {
       provider: run?.provider,
       model: run?.model,
@@ -87,5 +107,5 @@ export function diagnostics(run) {
     },
     null,
     2,
-  );
+  ));
 }

@@ -70,13 +70,27 @@ function currentSettings() {
 }
 
 /** A custom endpoint needs its own host permission before fetch will reach it. */
+const LOOPBACK = /^(localhost|127\.0\.0\.1|\[::1\])$/;
+
 async function ensureHostPermission(baseUrl) {
-  let origin;
+  let url;
   try {
-    origin = `${new URL(baseUrl).origin}/*`;
+    url = new URL(baseUrl);
   } catch {
     throw new Error("That base URL is not a valid URL.");
   }
+  // Over plain HTTP the API key travels in cleartext, so allow it only to a local
+  // server — where there is no network to intercept.
+  if (url.protocol === "http:" && !LOOPBACK.test(url.hostname)) {
+    throw new Error(
+      `${url.hostname} would receive your API key over plain HTTP, unencrypted. Use https://, ` +
+        "or a local address like http://localhost:11434/v1.",
+    );
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("The base URL must start with https:// (or http:// for a local server).");
+  }
+  const origin = `${url.origin}/*`;
   if (await chrome.permissions.contains({ origins: [origin] })) return;
   const granted = await chrome.permissions.request({ origins: [origin] });
   if (!granted) throw new Error(`Permission to reach ${origin} was declined.`);

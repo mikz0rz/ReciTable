@@ -41,10 +41,37 @@ Any of these work — the extension speaks both the OpenAI and Anthropic wire fo
 | **OpenAI** | Any chat model on the account. |
 | **Other OpenAI-compatible** | Your own base URL — a company gateway, or a local server like `http://localhost:11434/v1` for Ollama. Chrome asks for permission for that host on save. |
 
-**Where your key goes:** into this browser's extension storage, and out only to the
-provider you picked. Requests go straight from your browser to that provider —
-nothing passes through any intermediary — and page content is sent only when you
-press Convert.
+## What leaves your machine, and what it can reach
+
+**Page content goes to the provider you chose.** When you press Convert, the recipe
+read off the page — or, if the page has no structured data, up to 16 kB of its
+visible text — is sent to that provider's API. Nothing passes through any server of
+ours; the request goes straight from your browser. Convert nothing you would not
+paste into that provider's console.
+
+**Your API key** lives in `chrome.storage.local` and is sent only to the provider you
+picked. Chrome does not encrypt that store, so anyone with access to your browser
+profile on disk can read it — treat it like a key in a config file, and prefer a
+key scoped to this use. **Copy diagnostics** scrubs anything key-shaped before it
+reaches the clipboard, in case a provider echoes the `Authorization` header into an
+error.
+
+**Permissions.** `activeTab` means the extension can read a page only on the click
+that converts it, never in the background. The three `host_permissions` are the API
+endpoints. A custom endpoint asks for its own origin at the moment you save it —
+`https://` anywhere, but `http://` only for `localhost`/`127.0.0.1`, because over
+plain HTTP the key would travel in cleartext. No `web_accessible_resources` and no
+`externally_connectable`, so no web page can reach into the extension.
+
+**Prompt injection is possible and bounded.** A page can contain text aimed at the
+model ("ignore your instructions and…"), because page text is model input. What it
+can achieve is limited: output is escaped before rendering, the model has no tools
+and no network, and the source link is always the real tab URL rather than anything
+the model returns. The realistic worst case is a misleading recipe, so treat a table
+from a page you do not trust the way you would treat the page.
+
+`node tests/security.mjs` runs hostile input — script tags, attribute break-outs,
+`javascript:` URLs, prototype pollution — through every field of both renderers.
 
 ## How a page becomes a table
 
