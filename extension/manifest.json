@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "ReciTable",
+  "version": "0.1.0",
+  "description": "Plain recipe in, step-by-step table out: ingredients down the left, operations bracketing them right.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://openrouter.ai/*",
+    "https://api.anthropic.com/*",
+    "https://api.openai.com/*"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Draw this recipe as a table",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "options_page": "options.html"
+}

@@ -1,0 +1,283 @@
+{
+  "title": "Classic Birthday Cake",
+  "tags": [
+    "two layers",
+    "hot-milk batter",
+    "cocoa buttercream"
+  ],
+  "deck": "A tender yellow butter cake built with hot milk, under a cocoa frosting.",
+  "serves": 16,
+  "yield": "one two-layer 8\" or 9\" cake",
+  "vessel": "two 8x2-in or 9x2-in round pans",
+  "oven": "325°F (165°C)",
+  "active": "1 hr",
+  "time": "26–42 min bake",
+  "source": "https://www.kingarthurbaking.com/recipes/classic-birthday-cake-recipe",
+  "credit": "Adapted from King Arthur Baking's classic birthday cake.",
+  "sections": [
+    {
+      "name": "cake",
+      "prep": [
+        "Grease the pans, line the bottoms with parchment rounds, grease again",
+        "Preheat oven to 325°F (165°C)"
+      ],
+      "tree": {
+        "op": "bake",
+        "detail": "325°F\n26–30 min (9\")\n38–42 min (8\")",
+        "children": [
+          {
+            "op": "mix in",
+            "detail": "slowly, low speed,\nscrape, until smooth",
+            "children": [
+              {
+                "op": "mix",
+                "detail": "low speed,\njust combined",
+                "children": [
+                  {
+                    "op": "whisk",
+                    "children": [
+                      {
+                        "item": "2 cups (240 g) all-purpose flour",
+                        "note": "weigh, or spoon and sweep",
+                        "name": "all-purpose flour",
+                        "amount": 2,
+                        "unit": "cups",
+                        "metric": 240,
+                        "metric_unit": "g"
+                      },
+                      {
+                        "item": "1 1/4 tsp table salt",
+                        "name": "table salt",
+                        "amount": 1.25,
+                        "unit": "tsp"
+                      },
+                      {
+                        "item": "2 tsp baking powder",
+                        "name": "baking powder",
+                        "amount": 2,
+                        "unit": "tsp"
+                      }
+                    ]
+                  },
+                  {
+                    "op": "beat",
+                    "detail": "2 min, med-high,\nthick and light gold",
+                    "children": [
+                      {
+                        "item": "4 large eggs",
+                        "note": "room temperature",
+                        "name": "eggs",
+                        "amount": 4,
+                        "unit": "large"
+                      },
+                      {
+                        "item": "2 cups (397 g) granulated sugar",
+                        "name": "granulated sugar",
+                        "amount": 2,
+                        "unit": "cups",
+                        "metric": 397,
+                        "metric_unit": "g"
+                      },
+                      {
+                        "item": "1 Tbs (14 g) vanilla extract",
+                        "name": "vanilla extract",
+                        "amount": 1,
+                        "unit": "Tbs",
+                        "metric": 14,
+                        "metric_unit": "g"
+                      },
+                      {
+                        "item": "1/8 tsp almond extract",
+                        "note": "optional",
+                        "name": "almond extract",
+                        "amount": 0.125,
+                        "unit": "tsp"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "op": "stir",
+                "detail": "off heat,\nuntil melted",
+                "children": [
+                  {
+                    "op": "heat",
+                    "detail": "to a simmer",
+                    "children": [
+                      {
+                        "item": "1 cup (227 g) whole milk",
+                        "name": "whole milk",
+                        "amount": 1,
+                        "unit": "cup",
+                        "metric": 227,
+                        "metric_unit": "g"
+                      }
+                    ]
+                  },
+                  {
+                    "item": "4 Tbs (57 g) butter",
+                    "note": "cut into pats",
+                    "name": "butter",
+                    "amount": 4,
+                    "unit": "Tbs",
+                    "metric": 57,
+                    "metric_unit": "g"
+                  },
+                  {
+                    "item": "1/3 cup (67 g) vegetable oil",
+                    "name": "vegetable oil",
+                    "amount": 0.3333,
+                    "unit": "cup",
+                    "metric": 67,
+                    "metric_unit": "g"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "finish": [
+        "Divide batter evenly between the pans — about 2 3/4 cups (580 g) each",
+        "Done at 205°F internal; cool 15 min in pans, turn out, cool completely"
+      ]
+    },
+    {
+      "name": "frosting",
+      "tree": {
+        "op": "beat",
+        "detail": "1–2 min, med-high,\nuntil fluffy",
+        "children": [
+          {
+            "op": "stir in",
+            "children": [
+              {
+                "op": "stir together",
+                "children": [
+                  {
+                    "item": "1 1/4 cups (106 g) natural cocoa powder",
+                    "name": "natural cocoa powder",
+                    "amount": 1.25,
+                    "unit": "cups",
+                    "metric": 106,
+                    "metric_unit": "g"
+                  },
+                  {
+                    "item": "1 cup (113 g) confectioners' sugar",
+                    "name": "confectioners' sugar",
+                    "amount": 1,
+                    "unit": "cup",
+                    "metric": 113,
+                    "metric_unit": "g"
+                  },
+                  {
+                    "item": "1/4 tsp table salt",
+                    "name": "table salt",
+                    "amount": 0.25,
+                    "unit": "tsp"
+                  }
+                ]
+              },
+              {
+                "item": "1/3 cup (74 g) hot water",
+                "name": "hot water",
+                "amount": 0.3333,
+                "unit": "cup",
+                "metric": 74,
+                "metric_unit": "g"
+              },
+              {
+                "item": "1 Tbs (14 g) vanilla extract",
+                "name": "vanilla extract",
+                "amount": 1,
+                "unit": "Tbs",
+                "metric": 14,
+                "metric_unit": "g"
+              }
+            ]
+          },
+          {
+            "item": "20 Tbs (284 g) butter",
+            "note": "softened",
+            "name": "butter",
+            "amount": 20,
+            "unit": "Tbs",
+            "metric": 284,
+            "metric_unit": "g"
+          },
+          {
+            "item": "3 cups (341 g) confectioners' sugar",
+            "note": "the remainder",
+            "name": "confectioners' sugar",
+            "amount": 3,
+            "unit": "cups",
+            "metric": 341,
+            "metric_unit": "g"
+          }
+        ]
+      },
+      "finish": [
+        "Thin with water, a teaspoon at a time, if it is stiffer than spreadable"
+      ]
+    },
+    {
+      "name": "assembly",
+      "tree": {
+        "op": "frost",
+        "detail": "thin crumb coat,\nchill 20 min,\nthen frost fully",
+        "children": [
+          {
+            "op": "chill",
+            "detail": "uncovered,\n30 min – 2 hr",
+            "children": [
+              {
+                "op": "stack",
+                "detail": "center and\npress gently",
+                "children": [
+                  {
+                    "item": "cooled cake layers",
+                    "from": "cake"
+                  },
+                  {
+                    "item": "about 1 cup frosting",
+                    "from": "frosting"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "item": "remaining frosting",
+            "from": "frosting"
+          }
+        ]
+      },
+      "prep": [
+        "Set the first layer on the plate with parchment strips under the edges"
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "title": "Weigh the flour",
+      "body": "Or spoon it into the cup and sweep the excess off — scooping straight from the bag packs in far too much."
+    },
+    {
+      "title": "Hot milk, not warm",
+      "body": "Bring the milk to a simmer before the butter and oil go in, so everything melts and the batter stays smooth when it is added."
+    },
+    {
+      "title": "Doneness",
+      "body": "Edges pull away, a toothpick comes out clean, and the centre reads 205°F. Cool 15 minutes in the pans before turning out."
+    },
+    {
+      "title": "Chill between coats",
+      "body": "Half an hour in the fridge after stacking, then a thin crumb coat and 20 minutes more, makes the final coat far easier to smooth."
+    },
+    {
+      "title": "Keeping",
+      "body": "Covered at room temperature up to 3 days, refrigerated up to a week, or frozen up to a month."
+    }
+  ]
+}

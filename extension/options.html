@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Recipe Table — settings</title>
+    <style>
+      :root {
+        --paper: #f5f7f1;
+        --sheet: #fff;
+        --ink: #15191b;
+        --rule: #1f6b3b;
+        --rule-soft: #9dbfa6;
+        --tint: #eaf1e6;
+        --muted: #66756a;
+        --bad: #9a2d20;
+        --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+        --sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #0e1211;
+          --sheet: #161b18;
+          --ink: #e6ede4;
+          --rule: #56ab6e;
+          --rule-soft: #3a5643;
+          --tint: #202a23;
+          --muted: #8d9c8f;
+          --bad: #e88b7d;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: clamp(1.25rem, 5vw, 3rem);
+        background: var(--paper);
+        color: var(--ink);
+        font: 400 0.9375rem/1.5 var(--sans);
+      }
+      main {
+        max-width: 34rem;
+        margin: 0 auto;
+        background: var(--sheet);
+        border: 1px solid var(--rule-soft);
+      }
+      header {
+        padding: 1.15rem clamp(1rem, 3vw, 1.6rem);
+        border-bottom: 2px solid var(--rule);
+      }
+      .eyebrow {
+        margin: 0 0 0.2rem;
+        font: 600 0.5625rem/1 var(--mono);
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      h1 { margin: 0; font: 600 1.375rem/1.2 var(--mono); letter-spacing: -0.015em; }
+      form { display: grid; gap: 1.15rem; padding: clamp(1rem, 3vw, 1.6rem); }
+      .field { display: grid; gap: 0.35rem; }
+      label {
+        font: 600 0.5625rem/1 var(--mono);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      input[type="text"], input[type="password"], select {
+        width: 100%;
+        padding: 0.5rem 0.55rem;
+        border: 1.5px solid var(--rule-soft);
+        border-radius: 2px;
+        background: var(--paper);
+        color: var(--ink);
+        font: 400 0.875rem/1.3 var(--mono);
+      }
+      input:focus-visible, select:focus-visible, button:focus-visible {
+        outline: 2px solid var(--rule);
+        outline-offset: 1px;
+      }
+      .row { display: flex; gap: 0.5rem; align-items: end; }
+      .row .field { flex: 1; min-width: 0; }
+      .check { display: flex; gap: 0.4rem; align-items: center; font-size: 0.8125rem; color: var(--muted); }
+      .check label { font: inherit; letter-spacing: 0; text-transform: none; }
+      button {
+        padding: 0.5rem 0.85rem;
+        border: 1.5px solid var(--rule);
+        border-radius: 2px;
+        background: transparent;
+        color: var(--rule);
+        font: 600 0.75rem/1.3 var(--mono);
+        letter-spacing: 0.04em;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      button.primary { background: var(--rule); color: var(--paper); }
+      button:hover { filter: brightness(1.08); }
+      .actions { display: flex; gap: 0.5rem; align-items: center; }
+      .hint { margin: 0; font-size: 0.8125rem; color: var(--muted); }
+      .hint a { color: var(--rule); }
+      #message {
+        margin: 0;
+        padding: 0.55rem 0.65rem;
+        border-left: 2px solid var(--rule);
+        background: var(--tint);
+        font-size: 0.8125rem;
+        display: none;
+      }
+      #message.show { display: block; }
+      #message.error { border-color: var(--bad); color: var(--bad); background: none; }
+      footer {
+        padding: 1rem clamp(1rem, 3vw, 1.6rem) 1.25rem;
+        border-top: 1px solid var(--rule-soft);
+        font-size: 0.8125rem;
+        color: var(--muted);
+      }
+      footer p { margin: 0 0 0.45rem; }
+      footer p:last-child { margin: 0; }
+      .label {
+        font: 600 0.5625rem/1 var(--mono);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--rule);
+      }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">recipe table</p>
+        <h1>Settings</h1>
+      </header>
+      <form id="form">
+        <div class="field">
+          <label for="provider">Provider</label>
+          <select id="provider"></select>
+          <p class="hint" id="providerNote"></p>
+        </div>
+
+        <div class="field" id="baseUrlField" hidden>
+          <label for="baseUrl">API base URL</label>
+          <input type="text" id="baseUrl" placeholder="http://localhost:11434/v1" spellcheck="false" />
+        </div>
+
+        <div class="field">
+          <label for="apiKey">API key</label>
+          <input type="password" id="apiKey" spellcheck="false" autocomplete="off" />
+          <p class="hint" id="keyHint"></p>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="model">Model</label>
+            <select id="model"></select>
+          </div>
+          <button type="button" id="load">Load models</button>
+        </div>
+        <div class="check">
+          <input type="checkbox" id="freeOnly" checked />
+          <label for="freeOnly">Free models only</label>
+        </div>
+
+        <p id="message"></p>
+
+        <div class="actions">
+          <button type="submit" class="primary">Save</button>
+          <button type="button" id="test">Test</button>
+        </div>
+      </form>
+      <footer>
+        <p class="label">where your key lives</p>
+        <p>
+          The key is stored in this browser's extension storage and is sent only to the provider you
+          pick. Requests go straight from your browser to that provider — nothing passes through any
+          server of ours, and page content leaves your machine only when you press Convert.
+        </p>
+      </footer>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

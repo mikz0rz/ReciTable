@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ReciTable</title>
+    <link rel="stylesheet" href="shared/runlog.css" />
+    <style>
+      :root {
+        --paper: #f5f7f1;
+        --sheet: #fff;
+        --ink: #15191b;
+        --rule: #1f6b3b;
+        --rule-soft: #9dbfa6;
+        --tint: #eaf1e6;
+        --muted: #66756a;
+        --bad: #9a2d20;
+        --warn: #8a6410;
+        --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+        --sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #0e1211;
+          --sheet: #161b18;
+          --ink: #e6ede4;
+          --rule: #56ab6e;
+          --rule-soft: #3a5643;
+          --tint: #202a23;
+          --muted: #8d9c8f;
+          --bad: #e88b7d;
+          --warn: #d8b268;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        width: 23rem;
+        margin: 0;
+        padding: 1rem;
+        background: var(--paper);
+        color: var(--ink);
+        font: 400 0.875rem/1.45 var(--sans);
+      }
+      .eyebrow {
+        margin: 0 0 0.15rem;
+        font: 600 0.5625rem/1 var(--mono);
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      h1 {
+        margin: 0 0 0.85rem;
+        font: 600 1.0625rem/1.2 var(--mono);
+        letter-spacing: -0.01em;
+      }
+      button {
+        border: 1.5px solid var(--rule);
+        border-radius: 2px;
+        background: var(--rule);
+        color: var(--paper);
+        font: 600 0.8125rem/1 var(--mono);
+        letter-spacing: 0.04em;
+        padding: 0.6rem 0.75rem;
+        cursor: pointer;
+      }
+      button.ghost { background: transparent; color: var(--rule); }
+      button:hover:not(:disabled) { filter: brightness(1.1); }
+      button:disabled { opacity: 0.5; cursor: default; }
+      button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+      #go { width: 100%; }
+
+      /* The run sheet itself comes from shared/runlog.css. */
+      #run { margin: 0.85rem 0 0; display: none; }
+      #run.show { display: block; }
+      #outcome { display: none; }
+      #outcome.show { display: block; }
+      .row { display: flex; gap: 0.4rem; margin-top: 0.6rem; }
+      .row button { flex: 1; padding: 0.4rem 0.5rem; font-size: 0.6875rem; }
+
+      .config {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-top: 0.85rem;
+        padding-top: 0.7rem;
+        border-top: 1px solid var(--rule-soft);
+        font: 400 0.6875rem/1.4 var(--mono);
+        color: var(--muted);
+      }
+      .config span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      a { color: var(--rule); }
+      a:focus-visible { outline: 2px solid var(--rule); outline-offset: 2px; }
+    </style>
+  </head>
+  <body>
+    <p class="eyebrow">recitable</p>
+    <h1>Draw this page</h1>
+
+    <button id="go" type="button">Convert this recipe</button>
+
+    <div id="run">
+      <ol id="steps" class="run-log"></ol>
+      <p id="outcome" class="run-outcome"></p>
+      <div class="row" id="tools" hidden>
+        <button class="ghost" id="open" type="button">Open table</button>
+        <button class="ghost" id="copy" type="button">Copy diagnostics</button>
+      </div>
+    </div>
+
+    <div class="config">
+      <span id="config">…</span>
+      <a href="#" id="settings">settings</a>
+    </div>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+# Rendered from the JSON by render_recipe.py
+recipes/*.html
+
+# Local Claude Code permissions, not project configuration
+.claude/settings.local.json
+
+__pycache__/
+*.pyc
+.DS_Store
+
+# Output of `chrome --pack-extension`
+extension.crx
+extension.pem

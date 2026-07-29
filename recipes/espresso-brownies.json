@@ -1,0 +1,117 @@
+{
+  "title": "Espresso Brownies",
+  "tags": [
+    "one pan",
+    "no mixer",
+    "espresso in the batter"
+  ],
+  "deck": "Melted-butter brownies with a shot of strong coffee worked into the batter.",
+  "serves": 9,
+  "yield": "9 squares",
+  "vessel": "8x8-in pan",
+  "oven": "350°F (170°C)",
+  "time": "30 to 40 min",
+  "credit": "Adapted from Michael Chu's Cooking for Engineers, where this layout comes from.",
+  "prep": [
+    "Butter and flour an 8x8-in pan",
+    "Preheat oven to 350°F (170°C)"
+  ],
+  "tree": {
+    "op": "bake",
+    "detail": "350°F (170°C)\n30 to 40 min",
+    "children": [
+      {
+        "op": "fold in",
+        "children": [
+          {
+            "op": "mix",
+            "children": [
+              {
+                "op": "mix",
+                "children": [
+                  {
+                    "op": "melt",
+                    "children": [
+                      {
+                        "item": "4 oz (115 g) unsalted butter",
+                        "name": "unsalted butter",
+                        "amount": 4,
+                        "unit": "oz",
+                        "metric": 115,
+                        "metric_unit": "g"
+                      }
+                    ]
+                  },
+                  {
+                    "item": "1 cup (200 g) sugar",
+                    "name": "sugar",
+                    "amount": 1,
+                    "unit": "cup",
+                    "metric": 200,
+                    "metric_unit": "g"
+                  },
+                  {
+                    "item": "1/4 tsp. (2.5 mL) vanilla extract",
+                    "name": "vanilla extract",
+                    "amount": 0.25,
+                    "unit": "tsp.",
+                    "metric": 2.5,
+                    "metric_unit": "mL"
+                  },
+                  {
+                    "item": "1 shot (4 Tbs; 60 mL) fresh brewed espresso or very strong coffee",
+                    "name": "fresh brewed espresso or very strong coffee",
+                    "amount": 4,
+                    "unit": "Tbs",
+                    "metric": 60,
+                    "metric_unit": "mL"
+                  }
+                ]
+              },
+              {
+                "item": "2 large (100 g) eggs",
+                "name": "eggs",
+                "amount": 2,
+                "unit": "large",
+                "metric": 100,
+                "metric_unit": "g"
+              }
+            ]
+          },
+          {
+            "item": "1/2 cup (80 g) all-purpose flour",
+            "name": "all-purpose flour",
+            "amount": 0.5,
+            "unit": "cup",
+            "metric": 80,
+            "metric_unit": "g"
+          },
+          {
+            "item": "1/3 cup (80 g) Hershey's cocoa powder",
+            "name": "Hershey's cocoa powder",
+            "amount": 0.3333,
+            "unit": "cup",
+            "metric": 80,
+            "metric_unit": "g"
+          },
+          {
+            "item": "1/4 tsp. (1.3 g) baking soda",
+            "name": "baking soda",
+            "amount": 0.25,
+            "unit": "tsp.",
+            "metric": 1.3,
+            "metric_unit": "g"
+          },
+          {
+            "item": "1/4 tsp. (1.5 g) table salt",
+            "name": "table salt",
+            "amount": 0.25,
+            "unit": "tsp.",
+            "metric": 1.5,
+            "metric_unit": "g"
+          }
+        ]
+      }
+    ]
+  }
+}

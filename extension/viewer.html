@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recipe table</title>
+    <link rel="stylesheet" href="shared/recipe-table.css" />
+    <link rel="stylesheet" href="shared/runlog.css" />
+    <style>
+      /* Chrome for the viewer only — the sheet itself is styled by the shared
+         stylesheet. */
+      :root { --warn: #8a6410; --bad: #9a2d20; }
+      @media (prefers-color-scheme: dark) {
+        :root { --warn: #d8b268; --bad: #e88b7d; }
+      }
+      .bar {
+        max-width: 62rem;
+        margin: 0 auto 0.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        justify-content: flex-end;
+      }
+      .bar button {
+        padding: 0.4rem 0.7rem;
+        border: 1.5px solid var(--rule-soft);
+        border-radius: 2px;
+        background: var(--sheet);
+        color: var(--ink);
+        font: 600 0.6875rem/1.3 var(--mono);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .bar button:hover { border-color: var(--rule); color: var(--rule); }
+      .bar button:focus-visible { outline: 2px solid var(--rule); outline-offset: 2px; }
+
+      /* The waiting room: same sheet, a run log instead of a table. */
+      .panel {
+        max-width: 34rem;
+        margin: 0 auto;
+        padding: clamp(1.25rem, 4vw, 2rem);
+        background: var(--sheet);
+        border: 1px solid var(--rule-soft);
+        box-shadow: var(--shadow);
+      }
+      .panel .eyebrow {
+        margin: 0 0 0.2rem;
+        font-family: var(--mono);
+        font-size: 0.625rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .panel h1 {
+        margin: 0 0 1rem;
+        font-family: var(--mono);
+        font-size: 1.375rem;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+      }
+      .panel .source {
+        margin: 0 0 1rem;
+        font: 400 0.75rem/1.4 var(--mono);
+        color: var(--muted);
+        overflow-wrap: anywhere;
+      }
+      .panel .row { display: flex; gap: 0.5rem; margin-top: 1rem; }
+      .panel .row button {
+        padding: 0.45rem 0.75rem;
+        border: 1.5px solid var(--rule);
+        border-radius: 2px;
+        background: transparent;
+        color: var(--rule);
+        font: 600 0.75rem/1.2 var(--mono);
+        cursor: pointer;
+      }
+      .panel .row button:hover { background: var(--rule); color: var(--sheet); }
+      .panel .row button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+      .empty { color: var(--muted); }
+
+      @media print {
+        body { padding: 0; background: #fff; }
+        .bar, .panel { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bar" hidden>
+      <button type="button" id="print">Print</button>
+      <button type="button" id="html">Save HTML</button>
+      <button type="button" id="json">Save JSON</button>
+    </div>
+    <div id="sheet"></div>
+    <script type="module" src="viewer.js"></script>
+  </body>
+</html>

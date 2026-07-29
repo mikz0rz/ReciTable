@@ -1,0 +1,383 @@
+:root {
+  --paper: #f5f7f1;
+  --sheet: #ffffff;
+  --ink: #15191b;
+  --rule: #1f6b3b;
+  --rule-soft: #9dbfa6;
+  --tint: #eaf1e6;
+  --band: #dfe9da;
+  --muted: #66756a;
+  --shadow: 0 1px 0 rgba(21, 25, 27, .06), 0 18px 40px -28px rgba(21, 25, 27, .5);
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0e1211;
+    --sheet: #161b18;
+    --ink: #e6ede4;
+    --rule: #56ab6e;
+    --rule-soft: #3a5643;
+    --tint: #202a23;
+    --band: #29342c;
+    --muted: #8d9c8f;
+    --shadow: 0 0 0 1px rgba(86, 171, 110, .12), 0 24px 50px -30px #000;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e1211;
+  --sheet: #161b18;
+  --ink: #e6ede4;
+  --rule: #56ab6e;
+  --rule-soft: #3a5643;
+  --tint: #202a23;
+  --band: #29342c;
+  --muted: #8d9c8f;
+  --shadow: 0 0 0 1px rgba(86, 171, 110, .12), 0 24px 50px -30px #000;
+}
+:root[data-theme="light"] {
+  --paper: #f5f7f1;
+  --sheet: #ffffff;
+  --ink: #15191b;
+  --rule: #1f6b3b;
+  --rule-soft: #9dbfa6;
+  --tint: #eaf1e6;
+  --band: #dfe9da;
+  --muted: #66756a;
+  --shadow: 0 1px 0 rgba(21, 25, 27, .06), 0 18px 40px -28px rgba(21, 25, 27, .5);
+}
+
+body {
+  margin: 0;
+  padding: clamp(1rem, 4vw, 3.5rem) clamp(.75rem, 4vw, 3rem);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+
+.sheet {
+  max-width: 62rem;
+  margin: 0 auto;
+  background: var(--sheet);
+  border: 1px solid var(--rule-soft);
+  box-shadow: var(--shadow);
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  padding: 1.25rem clamp(1rem, 3vw, 1.75rem);
+  border-bottom: 2px solid var(--rule);
+}
+.eyebrow {
+  margin: 0 0 .35rem;
+  font-family: var(--mono);
+  font-size: .625rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+h1 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: clamp(1.35rem, 1rem + 1.6vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -.015em;
+  text-wrap: balance;
+}
+.block {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .55rem 1.75rem;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.field {
+  border-top: 1.5px solid var(--rule-soft);
+  padding-top: .3rem;
+}
+.field dt {
+  font-family: var(--mono);
+  font-size: .5625rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.field dd {
+  margin: 0;
+  font-size: .8125rem;
+  font-weight: 500;
+}
+.field a { color: var(--rule); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.field a:focus-visible { outline: 2px solid var(--rule); outline-offset: 2px; }
+
+.scroll { overflow-x: auto; padding: clamp(.75rem, 3vw, 1.5rem); }
+.section + .scroll { padding-top: .35rem; }
+
+h2.section {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  margin: 0;
+  padding: 1.1rem clamp(1rem, 3vw, 1.75rem) 0;
+  font-family: var(--mono);
+  font-size: .6875rem;
+  font-weight: 600;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--rule);
+}
+h2.section .tag {
+  display: grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border: 1.5px solid var(--rule);
+  border-radius: 50%;
+  font-size: .625rem;
+  letter-spacing: 0;
+}
+.scroll + h2.section { border-top: 1px solid var(--rule-soft); }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  /* Column widths come from the generated <colgroup>, so a long detail line
+     cannot squeeze the ingredient column. */
+  table-layout: fixed;
+}
+td { border: 1.5px solid var(--rule); padding: .5rem .6rem; vertical-align: middle; }
+td.gap { border: none; background: none; padding: 0; }
+
+td.ing {
+  font-size: .875rem;
+  line-height: 1.3;
+}
+.qty { font-variant-numeric: tabular-nums; }
+td.ref {
+  border-style: dashed;
+  background: var(--tint);
+  font-style: italic;
+}
+.note {
+  display: block;
+  margin-top: .15rem;
+  font-family: var(--mono);
+  font-size: .6875rem;
+  color: var(--muted);
+  white-space: pre-line;
+}
+
+td.op {
+  background: var(--tint);
+  text-align: center;
+  min-width: 5.25rem;
+  padding: .5rem .45rem;
+}
+.verb {
+  font-family: var(--mono);
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: lowercase;
+}
+.detail {
+  display: block;
+  margin-top: .3rem;
+  font-family: var(--mono);
+  font-size: .6875rem;
+  font-weight: 400;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: pre-line;
+}
+
+td.prep, td.finish {
+  background: var(--band);
+  text-align: center;
+  font-size: .8125rem;
+}
+td.prep { font-weight: 500; }
+td.finish { color: var(--muted); }
+
+footer {
+  padding: 1rem clamp(1rem, 3vw, 1.75rem) 1.25rem;
+  border-top: 1px solid var(--rule-soft);
+  display: grid;
+  gap: .9rem;
+}
+footer p {
+  margin: 0;
+  font-size: .8125rem;
+  color: var(--muted);
+  max-width: 62ch;
+}
+footer .label {
+  font-family: var(--mono);
+  font-size: .5625rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--rule);
+}
+
+/* --------------------------------------------------------- title and notes */
+
+.titles { display: grid; gap: .35rem; }
+.titles .eyebrow { margin: 0; }
+.deck {
+  margin: 0;
+  max-width: 36ch;
+  font-size: .9375rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.note-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: .9rem 1.75rem;
+}
+.note-item h3 {
+  margin: 0 0 .1rem;
+  font-family: var(--mono);
+  font-size: .8125rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--ink);
+}
+.credit {
+  font-family: var(--mono);
+  font-size: .6875rem;
+  line-height: 1.6;
+  max-width: 78ch;
+}
+
+/* ------------------------------------------------- controls added by script */
+
+.controls,
+.cook-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .55rem 1.1rem;
+  padding: .8rem clamp(1rem, 3vw, 1.75rem);
+  border-bottom: 1px solid var(--rule-soft);
+}
+.cook-bar { background: var(--tint); }
+.cook-bar[hidden] { display: none; }
+
+.group { display: flex; align-items: center; gap: .3rem; }
+.group-label,
+.cook-n {
+  font-family: var(--mono);
+  font-size: .5625rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.group-label { margin-right: .15rem; }
+
+.controls button,
+.cook-bar button {
+  padding: .3rem .65rem;
+  border: 1.5px solid var(--rule-soft);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink);
+  font: 600 .75rem/1.25 var(--mono);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
+}
+.controls button:hover,
+.cook-bar button:hover:not(:disabled) { border-color: var(--rule); color: var(--rule); }
+.controls button:focus-visible,
+.cook-bar button:focus-visible { outline: 2px solid var(--rule); outline-offset: 2px; }
+.controls button[aria-pressed="true"] {
+  background: var(--rule);
+  border-color: var(--rule);
+  color: var(--sheet);
+}
+.controls .go { margin-left: auto; border-color: var(--rule); color: var(--rule); }
+.controls .go:hover { background: var(--rule); color: var(--sheet); }
+.cook-bar button:disabled { opacity: .4; cursor: default; }
+
+.control-note {
+  margin: 0;
+  max-width: 38ch;
+  font-size: .75rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.cook-label { display: grid; }
+.cook-t {
+  font-family: var(--mono);
+  font-size: .9375rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.cook-d {
+  font-family: var(--mono);
+  font-size: .6875rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.cook-bar .clock {
+  margin-left: auto;
+  min-width: 6.5rem;
+  text-align: center;
+  font-size: .9375rem;
+  font-weight: 700;
+}
+.cook-bar .clock.done {
+  background: var(--rule);
+  border-color: var(--rule);
+  color: var(--sheet);
+}
+
+/* --------------------------------------------------------- interactive table */
+
+td.ing { cursor: pointer; }
+td.ing.off { opacity: .5; }
+td.ing.off .qty { text-decoration: line-through; }
+td.op { cursor: pointer; }
+td { transition: opacity .15s ease, background .15s ease; }
+
+/* Cook mode: everything recedes except the step in hand and what feeds it. */
+.cooking .scroll td { opacity: .28; }
+.cooking .scroll td.hot { opacity: 1; }
+td.ing.hot { background: var(--tint); }
+td.op.hot { background: var(--rule); }
+td.op.hot .verb { color: var(--sheet); }
+td.op.hot .detail { color: var(--tint); }
+td.prep.hot,
+td.finish.hot { outline: 2px solid var(--rule); outline-offset: -2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+
+/* ------------------------------------------------------------------- print */
+
+@media print {
+  @page { margin: 12mm; }
+  body { padding: 0; background: #fff; }
+  .sheet { max-width: none; border: none; box-shadow: none; }
+  .controls, .cook-bar { display: none !important; }
+  /* Without a viewport to scroll, an overflow container would simply clip the
+     right-hand operations off the page. */
+  .scroll { overflow: visible; padding: 0 0 .5rem; }
+  table { min-width: 0 !important; }
+  tr, td { break-inside: avoid; }
+  header, footer, h2.section { padding-left: 0; padding-right: 0; }
+  /* The table's meaning is carried by its tints, so keep them. */
+  .sheet { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .cooking .scroll td { opacity: 1; }
+  td.ing { cursor: auto; }
+}

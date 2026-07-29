@@ -1,0 +1,56 @@
+/* The run sheet. Assumes the design tokens (--rule, --mono, …) already exist on
+   the page; the viewer gets them from recipe-table.css. */
+
+.run-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule-soft);
+}
+.run-log li {
+  display: grid;
+  grid-template-columns: 1rem 1fr auto;
+  gap: 0 .5rem;
+  padding: .4rem 0;
+  border-bottom: 1px solid var(--rule-soft);
+  font-size: .8125rem;
+}
+.run-log .glyph {
+  font: 700 .75rem/1.5 var(--mono);
+  text-align: center;
+  color: var(--rule);
+}
+.run-log li[data-state="run"] .glyph {
+  color: var(--muted);
+  animation: run-pulse 1.1s ease-in-out infinite;
+}
+.run-log li[data-state="warn"] .glyph { color: var(--warn); }
+.run-log li[data-state="error"] .glyph { color: var(--bad); }
+@keyframes run-pulse { 50% { opacity: .25; } }
+
+.run-log .label { font-weight: 500; }
+.run-log .detail {
+  grid-column: 2;
+  font: 400 .75rem/1.4 var(--mono);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.run-log .ms {
+  font: 400 .6875rem/1.5 var(--mono);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-outcome { margin: .7rem 0 0; font-size: .8125rem; }
+.run-outcome.error { color: var(--bad); }
+.run-outcome .why {
+  display: block;
+  margin-top: .25rem;
+  font: 400 .75rem/1.45 var(--mono);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .run-log li[data-state="run"] .glyph { animation: none; }
+}
