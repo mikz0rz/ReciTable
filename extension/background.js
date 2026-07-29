@@ -6,8 +6,20 @@
 
 import { extractRecipe } from "./extract.js";
 import { complete, PROVIDERS } from "./shared/providers.js";
-import { validateRecipe, buildTree, salvage } from "./shared/schema.js";
-import { SYSTEM_PROMPT, buildUserPrompt, buildRepairPrompt } from "./shared/prompt.js";
+import {
+  validateRecipe,
+  buildTree,
+  salvage,
+  fromSimple,
+  SIMPLE_SCHEMA,
+} from "./shared/schema.js";
+import {
+  SYSTEM_PROMPT,
+  SIMPLE_SYSTEM_PROMPT,
+  buildUserPrompt,
+  buildSimplePrompt,
+  buildRepairPrompt,
+} from "./shared/prompt.js";
 
 const RUN_KEY = "run";
 
@@ -227,6 +239,7 @@ async function scrape(tabId) {
 // ------------------------------------------------------------------- the work
 
 async function askModel(run, settings, extraction, signal) {
+  // extraction is reused by the simple-mode fallback below.
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
     { role: "user", content: buildUserPrompt(extraction) },
@@ -298,8 +311,33 @@ async function askModel(run, settings, extraction, signal) {
   }
 
   if (!result.ok) {
+    // The nested shape is beyond this model. Ask for something with no structure
+    // to get wrong — a flat list of steps — and chain it into a tree here.
+    const plain = begin(run, "simple", "Ask again, more simply");
+    update(run, plain, "a flat list of steps instead of a tree");
+    const simple = await complete(
+      settings,
+      [
+        { role: "system", content: SIMPLE_SYSTEM_PROMPT },
+        { role: "user", content: buildSimplePrompt(extraction) },
+      ],
+      { schema: SIMPLE_SCHEMA, stream: first.streamed, signal, onProgress: reporter(run, plain) },
+    );
+    recipe = salvage(fromSimple(simple.data)).recipe;
+    result = validateRecipe(recipe);
+    settle(
+      run,
+      plain,
+      result.ok
+        ? `${(simple.data.steps || []).length} steps, chained`
+        : `still no good — ${result.errors[0]}`,
+      result.ok ? "warn" : "error",
+    );
+  }
+
+  if (!result.ok) {
     const err = new Error(result.errors[0]);
-    err.detail = `${result.errors.join("\n")}\nA model that cannot fix this on the second pass usually needs replacing with a stronger one.`;
+    err.detail = `${result.errors.join("\n")}\nThree attempts failed on this model. A stronger one will usually just work.`;
     err.sample = JSON.stringify(recipe).slice(0, 900);
     throw err;
   }

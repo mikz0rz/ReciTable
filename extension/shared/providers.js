@@ -355,7 +355,7 @@ export function parseJsonLoosely(text) {
 
 const FORMAT_MODES = ["json_schema", "json_object", "none"];
 
-function openaiBody(settings, messages, mode) {
+function openaiBody(settings, messages, mode, schema = RECIPE_SCHEMA) {
   const body = {
     model: settings.model,
     messages,
@@ -364,7 +364,7 @@ function openaiBody(settings, messages, mode) {
   if (mode === "json_schema") {
     body.response_format = {
       type: "json_schema",
-      json_schema: { name: "recipe_table", strict: true, schema: RECIPE_SCHEMA },
+      json_schema: { name: "recipe_table", strict: true, schema },
     };
   } else if (mode === "json_object") {
     body.response_format = { type: "json_object" };
@@ -372,7 +372,7 @@ function openaiBody(settings, messages, mode) {
   return body;
 }
 
-function anthropicBody(settings, messages, mode) {
+function anthropicBody(settings, messages, mode, schema = RECIPE_SCHEMA) {
   const system = messages.find((m) => m.role === "system")?.content || "";
   const body = {
     model: settings.model || PROVIDERS.anthropic.defaultModel,
@@ -383,7 +383,7 @@ function anthropicBody(settings, messages, mode) {
     messages: messages.filter((m) => m.role !== "system"),
   };
   if (mode === "json_schema") {
-    body.output_config = { format: { type: "json_schema", schema: RECIPE_SCHEMA } };
+    body.output_config = { format: { type: "json_schema", schema } };
   }
   return body;
 }
@@ -518,7 +518,11 @@ function rejectsStreaming(err) {
  * prompt-only) and streaming versus not. Reports which rungs it landed on so the
  * caller can cache them and show them.
  */
-export async function complete(settings, messages, { startMode, signal, onProgress, stream = true } = {}) {
+export async function complete(
+  settings,
+  messages,
+  { startMode, signal, onProgress, stream = true, schema } = {},
+) {
   const kind = PROVIDERS[settings.provider].kind;
   const build = kind === "anthropic" ? anthropicBody : openaiBody;
   const path = kind === "anthropic" ? "/messages" : "/chat/completions";
@@ -527,7 +531,7 @@ export async function complete(settings, messages, { startMode, signal, onProgre
   let lastError = new Error("No attempt was made.");
 
   const attempt = async (mode, streaming) => {
-    const body = build(settings, messages, mode);
+    const body = build(settings, messages, mode, schema);
     let text;
     let stop = null;
     let usage;

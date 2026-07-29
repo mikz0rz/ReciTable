@@ -40,6 +40,38 @@ Here is a complete, minimal example of the exact shape. Note that "tree" holds o
 
 {"title":"Buttered Toast","deck":"Toast, buttered while hot.","tags":["one pan"],"serves":1,"yield":"1 slice","vessel":"","oven":"","active":"","time":"3 min","credit":"","notes":[{"title":"Butter first","body":"It only melts in while the toast is hot."}],"sections":[{"name":"","prep":["Heat the grill"],"finish":["Cut in half"],"tree":{"op":"spread","detail":"while hot","children":[{"op":"toast","detail":"2 min","children":[{"item":"1 slice bread","name":"bread","amount":1,"unit":"slice","metric":0,"metric_unit":"","note":""}]},{"item":"1 Tbs (14 g) butter","name":"butter","amount":1,"unit":"Tbs","metric":14,"metric_unit":"g","note":"softened"}]}}]}`;
 
+/**
+ * The fallback ask, for a model that could not hold the nested shape. Nothing here
+ * has any structure to get wrong: a list of steps in order, each naming the
+ * ingredients that join at that point.
+ */
+export const SIMPLE_SYSTEM_PROMPT = `You convert recipes into a table where ingredients are rows down the left and each operation is a cell to the right, spanning the rows it consumes.
+
+Describe the method as a FLAT LIST OF STEPS IN ORDER. Each step continues from the one before it, so you never refer to anything: you only say what the step does, and which ingredients join at that point.
+
+Rules:
+
+1. Every ingredient in the source joins at exactly one step, in the "adds" list of the step that first uses it. Copy the quantity verbatim into "item", keeping both unit systems. Also give "name" (the ingredient with the quantity stripped), "amount" and "unit" for the leading quantity, and "metric"/"metric_unit" ONLY if the source printed a metric figure — otherwise 0 and "". Never convert or invent a quantity.
+
+2. An ingredient used at two stages appears in both steps' "adds", each with the amount used there and a "note" saying which use it is.
+
+3. Name each step with one or two lowercase words: whisk, beat, fold in, sear, simmer, bake. Temperature, time, speed and the visual cue go in "detail" — include a duration whenever the source gives one. A step that only acts on what is already there, like baking, has an empty "adds".
+
+4. Steps that combine nothing are not steps: preheating and greasing go in "prep"; cooling, cutting, dividing and doneness cues go in "finish".
+
+5. If the source omits a field, leave it "" or 0. Do not fill it in from your own knowledge.
+
+Example: {"title":"Buttered Toast","serves":1,"yield":"1 slice","vessel":"","oven":"","time":"3 min","credit":"","prep":["Heat the grill"],"finish":["Cut in half"],"steps":[{"op":"toast","detail":"2 min","adds":[{"item":"1 slice bread","name":"bread","amount":1,"unit":"slice","metric":0,"metric_unit":"","note":""}]},{"op":"spread","detail":"while hot","adds":[{"item":"1 Tbs (14 g) butter","name":"butter","amount":1,"unit":"Tbs","metric":14,"metric_unit":"g","note":""}]}]}
+
+Work only from the recipe given to you.`;
+
+export function buildSimplePrompt(extraction) {
+  return buildUserPrompt(extraction).replace(
+    /Convert it into the recipe table JSON\..*$/s,
+    "List the steps in order, with the ingredients that join at each one.",
+  );
+}
+
 function structuredBlock(structured) {
   const lines = [`Recipe name: ${structured.name}`];
   if (structured.yield) lines.push(`Yield: ${structured.yield}`);

@@ -209,6 +209,95 @@ export const RECIPE_SCHEMA = {
   },
 };
 
+// --------------------------------------------------------------- simple mode
+//
+// A last resort for models that cannot hold the nested shape: ask for a flat list
+// of steps, each with the ingredients it adds, and chain them here. It costs the
+// ability to show parallel preparations — every table comes out as one spine — but
+// most recipes are linear anyway, and a correct linear table beats no table.
+//
+// The schema is under half the size of the nested one, and there is nothing
+// structural left to get wrong: no nesting, no ids, no references.
+
+export const SIMPLE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["title", "serves", "yield", "vessel", "oven", "time", "credit", "prep", "finish", "steps"],
+  properties: {
+    title: { type: "string", description: "Dish name." },
+    serves: { type: "number", description: "Servings if stated, else 0." },
+    yield: { type: "string", description: "e.g. '12 muffins'. \"\" if absent." },
+    vessel: { type: "string", description: "Pan or pot. \"\" if absent." },
+    oven: { type: "string", description: "Oven temperature. \"\" if not baked." },
+    time: { type: "string", description: "Cook or bake time. \"\" if absent." },
+    credit: { type: "string", description: "Attribution. \"\" if none." },
+    prep: {
+      type: "array",
+      description: "Setup that combines nothing: preheating, greasing a pan.",
+      items: { type: "string" },
+    },
+    finish: {
+      type: "array",
+      description: "Trailing steps that combine nothing: cooling, cutting, doneness cues.",
+      items: { type: "string" },
+    },
+    steps: {
+      type: "array",
+      description:
+        "Every operation, IN ORDER. Each one continues from the previous, so you never " +
+        "refer to anything: just say what it does and which ingredients join at that point.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["op", "detail", "adds"],
+        properties: {
+          op: { type: "string", description: "One or two lowercase words: 'whisk', 'fold in', 'bake'." },
+          detail: {
+            type: "string",
+            description: "Temperature, time, speed, cue. \"\" if none. Include a duration if stated.",
+          },
+          adds: {
+            type: "array",
+            description:
+              "The ingredients that join at this step, with their quantities verbatim. " +
+              "[] for a step that only acts on what is already there, like baking.",
+            items: INGREDIENT,
+          },
+        },
+      },
+    },
+  },
+};
+
+/** Turn the flat list into the nested shape the rest of the pipeline expects. */
+export function fromSimple(simple) {
+  const steps = (simple.steps || []).filter((s) => s && s.op);
+  const nodes = steps.map((step) => ({
+    op: step.op,
+    detail: step.detail || "",
+    children: Array.isArray(step.adds) ? step.adds.slice() : [],
+  }));
+  const tree = nodes.reduce((previous, node) =>
+    previous ? { ...node, children: [previous, ...node.children] } : node,
+  null);
+  return {
+    title: simple.title || "",
+    deck: "",
+    tags: [],
+    serves: simple.serves || 0,
+    yield: simple.yield || "",
+    vessel: simple.vessel || "",
+    oven: simple.oven || "",
+    active: "",
+    time: simple.time || "",
+    credit: simple.credit || "",
+    notes: [],
+    sections: tree
+      ? [{ name: "", prep: simple.prep || [], finish: simple.finish || [], tree }]
+      : [],
+  };
+}
+
 // ------------------------------------------------------------------- salvage
 //
 // Free models routinely get the envelope wrong even under a strict schema, because

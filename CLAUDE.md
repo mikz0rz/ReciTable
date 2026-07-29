@@ -82,6 +82,22 @@ Validation failures are still fed back once as a repair prompt, so **error strin
 prompts** — they must name what is wrong and state the remedy. `tests/pipeline.mjs`
 asserts that wording.
 
+Three asks, in descending ambition — the whole point is that a weak model still
+produces something:
+
+1. the nested tree (`RECIPE_SCHEMA`, ~7 kB);
+2. the same, with the specific defects fed back;
+3. **simple mode** (`SIMPLE_SCHEMA`, ~2.8 kB): a flat list of steps, chained into a
+   tree by `fromSimple()`. No nesting to get wrong. Costs parallel preparations —
+   every table becomes one spine — which is why it is last, not first.
+
+Before validation, `salvage()` straightens out envelope mistakes (a tree under
+another key, a section that is itself the operation, a flat list where the root
+belongs, an ingredient as a bare string). It repairs the wrapper only, never content,
+and reports what it changed. `repairJson()` in `providers.js` does the same for
+syntax — missing and trailing commas, raw newlines in strings — but deliberately
+never closes a truncated document, since that would silently drop ingredients.
+
 A recipe JSON on disk is the *tree* shape. Its schema and the rules for building one
 are documented in `.claude/skills/recipe-table/SKILL.md`; don't duplicate them here.
 

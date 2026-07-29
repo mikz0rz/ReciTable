@@ -8,10 +8,17 @@
 // Usage: node tests/pipeline.mjs
 
 import { readFileSync } from "node:fs";
-import { validateRecipe, buildTree, salvage } from "../extension/shared/schema.js";
+import {
+  validateRecipe,
+  buildTree,
+  salvage,
+  fromSimple,
+  SIMPLE_SCHEMA,
+} from "../extension/shared/schema.js";
 import { renderArticle } from "../extension/shared/layout.js";
 import { parseJsonLoosely } from "../extension/shared/providers.js";
 import { ALL_SCENES, sceneFor } from "../extension/shared/kitchen.js";
+import { RECIPE_SCHEMA as NESTED_SCHEMA } from "../extension/shared/schema.js";
 
 let failures = 0;
 const check = (name, condition, detail = "") => {
@@ -436,6 +443,58 @@ check(
 const empty = salvage({ title: "x", sections: [{ name: "", prep: [], finish: [] }] });
 check("a section with nothing in it is still rejected", !validateRecipe(empty.recipe).ok);
 check("salvage reports what it changed", renamed.repairs.length > 0, JSON.stringify(renamed.repairs));
+
+// ------------------------------------------------------------------ simple mode
+//
+// The last-resort ask: a flat list of steps, chained here into a tree. Most
+// recipes are linear, so this yields a correct table when the nested ask fails.
+
+const SIMPLE = {
+  title: "Basic Muffins",
+  serves: 12,
+  yield: "12 muffins",
+  vessel: "12-cup muffin tin",
+  oven: "425°F (220°C)",
+  time: "15-18 min",
+  credit: "",
+  prep: ["Heat the oven to 425°F", "Line the tin"],
+  finish: ["Cool 5 min in the tin"],
+  steps: [
+    { op: "whisk", detail: "", adds: [ing("2 cups (240 g) flour"), ing("1 Tbs baking powder")] },
+    { op: "beat", detail: "2 min", adds: [ing("2 large eggs"), ing("1 cup (200 g) sugar")] },
+    { op: "fold in", detail: "until just combined", adds: [] },
+    { op: "bake", detail: "15-18 min", adds: [] },
+  ],
+};
+
+const simple = fromSimple(structuredClone(SIMPLE));
+const simpleCheck = validateRecipe(simple);
+check("a flat step list becomes a valid recipe", simpleCheck.ok, simpleCheck.errors.join(" "));
+check(
+  "the last step is the root and the first is deepest",
+  simple.sections[0].tree.op === "bake" &&
+    simple.sections[0].tree.children[0].op === "fold in" &&
+    simple.sections[0].tree.children[0].children[0].op === "beat" &&
+    simple.sections[0].tree.children[0].children[0].children[0].op === "whisk",
+);
+check(
+  "ingredients stay with the step that adds them",
+  simple.sections[0].tree.children[0].children[0].children[0].children.length === 2,
+);
+check("prep and finish survive", simple.sections[0].prep.length === 2 && simple.sections[0].finish.length === 1);
+check("metadata survives", simple.serves === 12 && simple.oven === "425°F (220°C)");
+const simpleHtml = renderArticle(buildTree(structuredClone(simple)));
+check("it renders, with a stage per step", (simpleHtml.match(/class="op"/g) || []).length === 4, simpleHtml.slice(0, 80));
+check(
+  "the simple schema is well under half the nested one",
+  JSON.stringify(SIMPLE_SCHEMA).length < JSON.stringify(NESTED_SCHEMA).length * 0.5,
+  `${JSON.stringify(SIMPLE_SCHEMA).length} vs ${JSON.stringify(NESTED_SCHEMA).length}`,
+);
+
+// A single-step recipe still works.
+const oneStep = fromSimple({ title: "Toast", steps: [{ op: "toast", detail: "2 min", adds: [ing("bread")] }] });
+check("a one-step recipe works", validateRecipe(oneStep).ok);
+check("a recipe with no steps yields no sections", fromSimple({ title: "x", steps: [] }).sections.length === 0);
 
 // ----------------------------------------------------------- the ascii kitchen
 

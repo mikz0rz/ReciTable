@@ -71,6 +71,13 @@ press Convert.
    attributes to add cook mode, rescaling, and cross-off. See the main
    [README](../README.md#the-tree-already-knows-the-order-of-work).
 
+If the nested ask fails twice, there is a third attempt in **simple mode**: a flat
+list of steps in order, each naming the ingredients that join at it, chained into a
+tree here. The schema is under half the size and has nothing structural left to get
+wrong — no nesting, no ids, no references. It gives up showing parallel preparations
+(every table becomes one spine), but most recipes are linear and a correct linear
+table beats no table. The log says when it was used.
+
 Model output is never trusted on shape: a malformed graph produces a stated error
 rather than a silently wrong table. The same applies to quantities — the model
 must copy the source's text verbatim and split it into parts that agree with it;
