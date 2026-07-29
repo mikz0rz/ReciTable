@@ -54,3 +54,24 @@
 @media (prefers-reduced-motion: reduce) {
   .run-log li[data-state="run"] .glyph { animation: none; }
 }
+
+/* The ASCII kitchen shown while waiting. Decorative, so it is aria-hidden and
+   sits behind the log in reading order. */
+.stove {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: .8125rem;
+  line-height: 1.15;
+  color: var(--rule);
+  white-space: pre;
+  overflow-x: auto;
+  letter-spacing: 0;
+}
+.stove-caption {
+  margin: .35rem 0 1rem;
+  font-family: var(--mono);
+  font-size: .6875rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}

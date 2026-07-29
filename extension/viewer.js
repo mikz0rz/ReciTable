@@ -11,12 +11,16 @@ import {
   secs,
   elapsed,
 } from "./shared/runlog.js";
+import { startKitchen } from "./shared/kitchen.js";
 
 const mount = document.getElementById("sheet");
 const bar = document.querySelector(".bar");
 const params = new URLSearchParams(location.search);
 
 let ticker = null;
+let panel = null; // built once, then painted in place
+let kitchen = null;
+let latestRun = null; // the ticker must not close over a stale snapshot
 
 function slug(title) {
   return (
@@ -63,13 +67,19 @@ ${js}</script>
 `;
 }
 
-// --------------------------------------------------------------- the finished table
+function teardown() {
+  if (ticker) clearInterval(ticker);
+  ticker = null;
+  latestRun = null;
+  if (kitchen) kitchen.stop();
+  kitchen = null;
+  panel = null;
+}
+
+// --------------------------------------------------------- the finished table
 
 function showTable(recipe) {
-  if (ticker) {
-    clearInterval(ticker);
-    ticker = null;
-  }
+  teardown();
   try {
     // renderArticle annotates the tree as it lays out, so give it a private copy;
     // Save JSON needs the original untouched.
@@ -88,7 +98,7 @@ function showTable(recipe) {
     download(`${name}.html`, await standaloneHtml(structuredClone(recipe)), "text/html");
 
   // The script builds its controls from the rendered markup, so it has to run
-  // after the sheet is in the document. Re-added on each render.
+  // after the sheet is in the document.
   document.querySelectorAll("script[data-interactive]").forEach((s) => s.remove());
   const script = document.createElement("script");
   script.dataset.interactive = "true";
@@ -97,102 +107,122 @@ function showTable(recipe) {
 }
 
 function showMessage(text) {
+  teardown();
   bar.hidden = true;
-  const panel = document.createElement("div");
-  panel.className = "panel";
+  const box = document.createElement("div");
+  box.className = "panel";
   const p = document.createElement("p");
   p.className = "empty";
   p.textContent = text;
-  panel.append(p);
-  mount.replaceChildren(panel);
+  box.append(p);
+  mount.replaceChildren(box);
 }
 
-// ------------------------------------------------------------------ the live run
+// -------------------------------------------------------------- the live run
 
-function showRun(run) {
-  bar.hidden = true;
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
 
-  const panel = document.createElement("div");
-  panel.className = "panel";
+/**
+ * Build the waiting panel once. Rebuilding it on every log write would restart
+ * the animation two or three times a second.
+ */
+function buildPanel(run) {
+  const root = el("div", "panel");
+  const eyebrow = el("p", "eyebrow", `${run.provider} · ${run.model}`);
+  const heading = el("h1", null, "Drawing this recipe");
+  const source = el("p", "source", run.url || "");
 
-  const eyebrow = document.createElement("p");
-  eyebrow.className = "eyebrow";
-  eyebrow.textContent = `${run.provider} · ${run.model}`;
+  const stove = el("pre", "stove");
+  stove.setAttribute("aria-hidden", "true"); // decorative; the log is the content
+  const caption = el("p", "stove-caption");
 
-  const heading = document.createElement("h1");
-  heading.textContent =
-    run.state === "running" ? "Drawing this recipe" : runHeadline(run);
+  const list = el("ol", "run-log");
+  const outcome = el("p", "run-outcome");
+  const row = el("div", "row");
 
-  panel.append(eyebrow, heading);
+  const cancel = el("button", null, "Cancel");
+  cancel.type = "button";
+  cancel.onclick = () => chrome.runtime.sendMessage({ type: "cancel" });
 
-  if (run.url) {
-    const source = document.createElement("p");
-    source.className = "source";
-    source.textContent = run.url;
-    panel.append(source);
+  const copy = el("button", null, "Copy diagnostics");
+  copy.type = "button";
+
+  const settings = el("button", null, "Settings");
+  settings.type = "button";
+  settings.onclick = () => chrome.runtime.openOptionsPage();
+
+  row.append(cancel, copy, settings);
+  root.append(eyebrow, heading, source, stove, caption, list, outcome, row);
+  mount.replaceChildren(root);
+
+  kitchen = startKitchen(stove, caption);
+  return { root, heading, source, list, outcome, cancel, copy, settings };
+}
+
+function paintRun(run) {
+  latestRun = run;
+  if (!panel) panel = buildPanel(run);
+  const { heading, source, list, outcome, cancel, copy } = panel;
+
+  heading.textContent = run.state === "running" ? "Drawing this recipe" : runHeadline(run);
+  source.textContent = run.url || "";
+  renderRunLog(list, run);
+
+  const step = activeStep(run);
+  // The art follows whatever is cooking right now.
+  if (kitchen) {
+    if (run.state === "error") kitchen.burn();
+    else kitchen.show(step ? `${step.label} ${step.detail}` : "");
   }
 
-  const list = document.createElement("ol");
-  list.className = "run-log";
-  renderRunLog(list, run);
-  panel.append(list);
-
+  outcome.className = run.state === "error" ? "run-outcome error" : "run-outcome";
+  outcome.replaceChildren();
   if (run.state !== "running") {
-    const outcome = document.createElement("p");
-    outcome.className = run.state === "error" ? "run-outcome error" : "run-outcome";
     outcome.textContent = runHeadline(run);
     if (run.state === "error") {
-      const why = document.createElement("span");
-      why.className = "why";
-      why.textContent = errorDetail(run);
+      const why = el("span", "why", errorDetail(run));
       outcome.append(why);
     }
-    panel.append(outcome);
   }
 
-  const row = document.createElement("div");
-  row.className = "row";
-  if (run.state === "running") {
-    const cancel = document.createElement("button");
-    cancel.type = "button";
-    cancel.textContent = "Cancel";
-    cancel.onclick = () => chrome.runtime.sendMessage({ type: "cancel" });
-    row.append(cancel);
-  } else if (run.state === "error" || run.state === "cancelled") {
-    const copy = document.createElement("button");
-    copy.type = "button";
-    copy.textContent = "Copy diagnostics";
-    copy.onclick = async () => {
-      await navigator.clipboard.writeText(diagnostics(run));
-      copy.textContent = "Copied";
-    };
-    row.append(copy);
-  }
-  const settings = document.createElement("button");
-  settings.type = "button";
-  settings.textContent = "Settings";
-  settings.onclick = () => chrome.runtime.openOptionsPage();
-  row.append(settings);
-  panel.append(row);
+  cancel.hidden = run.state !== "running";
+  copy.hidden = run.state === "running";
+  copy.onclick = async () => {
+    await navigator.clipboard.writeText(diagnostics(run));
+    copy.textContent = "Copied";
+  };
 
-  mount.replaceChildren(panel);
-
-  // The tab title is what you see when you have switched away from this tab.
-  const step = activeStep(run);
+  // The tab title is what you see once you have switched away from this tab.
   document.title =
     run.state === "running"
       ? `${step ? step.label : "Working"} ${secs(elapsed(run))} — recipe table`
       : `${runHeadline(run)} — recipe table`;
 
-  if (run.state === "running" && !ticker) {
-    ticker = setInterval(async () => {
-      const stored = await chrome.storage.session.get("run");
-      if (stored.run) showRun(stored.run);
-    }, 400);
-  } else if (run.state !== "running" && ticker) {
-    clearInterval(ticker);
+  if (run.state === "running") {
+    if (!ticker) {
+      // Only to keep the clocks moving; log changes arrive by storage events.
+      ticker = setInterval(() => {
+        if (!latestRun) return;
+        renderRunLog(list, latestRun);
+        const live = activeStep(latestRun);
+        document.title = `${live ? live.label : "Working"} ${secs(elapsed(latestRun))} — recipe table`;
+      }, 400);
+    }
+  } else {
+    if (ticker) clearInterval(ticker);
     ticker = null;
+    if (kitchen && run.state !== "error") kitchen.stop();
   }
+}
+
+function showRun(run) {
+  bar.hidden = true;
+  paintRun(run);
 }
 
 async function loadRecipe(viewerId) {

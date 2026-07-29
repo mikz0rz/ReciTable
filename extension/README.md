@@ -51,14 +51,14 @@ press Convert.
 1. **Extract** — [extract.js](extract.js) reads the page's `Recipe` JSON-LD (most
    recipe sites publish it), falling back to microdata, then to visible text.
 2. **Convert** — the model gets that plus the rules in
-   [shared/prompt.js](shared/prompt.js) and returns a **flat** graph: ingredients
-   and steps with ids, each step listing what it consumes. Flat because the
-   renderer's tree is recursive and structured-output schemas can't express
-   recursion.
-3. **Validate** — [shared/schema.js](shared/schema.js) checks the graph: every
-   ingredient used exactly once, no dangling ids, no cycles, exactly one final
-   step. Failures go back to the model once, naming what broke — weaker free
-   models routinely fix the graph when told precisely what was wrong.
+   [shared/prompt.js](shared/prompt.js) and returns the **tree**: each ingredient
+   written inside the operation that consumes it, built backwards from the finished
+   dish. [shared/schema.js](shared/schema.js) spells the tree out to a fixed depth,
+   because JSON Schema can't express recursion.
+3. **Validate** — there are no ids, so a dangling reference, a cycle, or an
+   ingredient consumed twice cannot be expressed at all. What's left to check is
+   emptiness and half-given quantities; a failure goes back to the model once,
+   naming what broke.
 4. **Render** — [shared/layout.js](shared/layout.js) assembles the tree and
    computes the rowspan/colspan layout, stamping each operation with its stage in
    the cooking sequence (post-order of the tree) and the rows it consumes.
@@ -84,11 +84,26 @@ The worker writes a log of the run to session storage as it goes, and every view
 reads only that. So no view holds state, and all of them agree:
 
 ```
+     ( )     ( )
+      (   )
+   _______________
+  |               |
+  |  o    O    o  |
+  |_______________|
+  ^^^^^^^^^^^^^^^^^
+  SOMETHING IS SIMMERING
+
 ✓ Read the page          0.3s
   structured data · 16 ingredients, 18 steps
 · Ask cohere/…:free      8.2s
   receiving · 3.4 kB
 ```
+
+The tab draws an ASCII kitchen while it waits ([shared/kitchen.js](shared/kitchen.js)).
+It is not only decoration: the scene follows the step, so reading the page looks like a
+recipe card and plating looks like a plate. The model call matches nothing, so through
+the long wait it cycles dishes — a pot, a pancake, a whisk, a cake in the oven. A
+failure burns the pan.
 
 The dropdown is where you start and inspect a run, but Chrome closes it the moment
 it loses focus — so the tab and the badge are what carry a run once you look away.

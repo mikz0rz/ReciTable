@@ -1,14 +1,125 @@
-// The model's output contract, plus validation and conversion to the renderer's
-// nested tree.
+// The model's output contract, plus validation and normalisation.
 //
-// The renderer wants a recursive tree, which no structured-output schema can
-// express (Anthropic rejects recursive schemas outright; strict mode elsewhere
-// is uneven). So the model emits a FLAT list of ingredients and steps that
-// reference each other by id, and buildTree() assembles the tree here — where a
-// malformed graph produces a precise error we can hand back for one repair pass
-// instead of a silent mis-render.
+// The renderer needs a tree: leaves are ingredients, internal nodes are the
+// operations that consume them. An earlier version asked the model for a flat
+// graph of ids instead, because JSON Schema cannot express recursion — but a graph
+// lets the model produce shapes that are not trees at all (an id consumed twice, a
+// cycle, a reference to something that does not exist), and no amount of prompting
+// or repair rounds fixed that reliably.
+//
+// So the schema spells the tree out to a fixed depth instead. There are no ids, and
+// an ingredient is written inside the operation that uses it, which makes every one
+// of those failures impossible to express rather than merely detectable.
 
-/** JSON Schema for the flat wire format. Every field is required; "" and [] mean absent. */
+const INGREDIENT = {
+  type: "object",
+  additionalProperties: false,
+  required: ["item", "name", "amount", "unit", "metric", "metric_unit", "note"],
+  properties: {
+    item: {
+      type: "string",
+      description:
+        "Quantity and name verbatim from the source, keeping both unit systems, " +
+        "e.g. '2 cups (240 g) all-purpose flour'. This is what gets displayed.",
+    },
+    name: {
+      type: "string",
+      description:
+        "The same ingredient with the quantity stripped, e.g. 'all-purpose flour'. " +
+        "Used only for rescaling. \"\" if the entry has no quantity at all.",
+    },
+    amount: {
+      type: "number",
+      description:
+        "The leading quantity as a number: 2 for '2 cups', 0.25 for '1/4 tsp'. " +
+        "0 when the source gives no number ('salt to taste').",
+    },
+    unit: {
+      type: "string",
+      description: "Unit for amount: 'cups', 'tsp', 'large', 'cans'. \"\" if none.",
+    },
+    metric: {
+      type: "number",
+      description:
+        "The metric quantity ONLY IF the source states one — 240 for '2 cups (240 g)'. " +
+        "0 otherwise. Never convert or estimate it yourself.",
+    },
+    metric_unit: {
+      type: "string",
+      description: "'g' or 'mL'. \"\" if there is no metric amount.",
+    },
+    note: {
+      type: "string",
+      description:
+        "A qualifier: 'room temperature', 'for searing', 'from the cake'. \"\" if none. " +
+        "Use it to say which use this is when an ingredient appears more than once.",
+    },
+  },
+};
+
+const OP_FIELDS = {
+  op: {
+    type: "string",
+    description: "One or two lowercase words: 'mix', 'fold in', 'beat', 'melt', 'bake'.",
+  },
+  detail: {
+    type: "string",
+    description:
+      "Temperature, time, speed, visual cue — 'low speed, until just combined', " +
+      "'25-30 min'. Newlines allowed. \"\" if none. Never put the verb here. Include " +
+      "the duration whenever the source gives one; the page runs a timer from it.",
+  },
+};
+
+/** The same shape without the prose. Every level repeats it, and the field
+ *  descriptions only need reading once — this keeps the schema a third of the
+ *  size it would otherwise be, which matters on a small free-model context. */
+function terse(schema) {
+  const out = { ...schema, properties: {} };
+  delete out.description;
+  for (const [key, value] of Object.entries(schema.properties)) {
+    out.properties[key] = { type: value.type };
+  }
+  return out;
+}
+
+const TERSE_INGREDIENT = terse(INGREDIENT);
+
+/**
+ * An operation whose children may be ingredients or, up to `depth` more levels,
+ * further operations. Written out level by level because a `$ref` to itself would
+ * be a recursive schema, which structured outputs do not accept.
+ */
+function operation(depth, top = false) {
+  const leaf = top ? INGREDIENT : TERSE_INGREDIENT;
+  const child = depth > 0 ? { anyOf: [leaf, operation(depth - 1)] } : leaf;
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["op", "detail", "children"],
+    properties: {
+      ...(top
+        ? OP_FIELDS
+        : { op: { type: "string" }, detail: { type: "string" } }),
+      children: {
+        type: "array",
+        ...(top
+          ? {
+              description:
+                "What this operation combines, in the order the rows should read top to " +
+                "bottom: ingredients, and earlier operations whose result goes in here. " +
+                "Never empty.",
+            }
+          : {}),
+        items: child,
+      },
+    },
+  };
+}
+
+/** Deep enough for any real recipe; the birthday cake below reaches five. */
+export const MAX_DEPTH = 6;
+
 export const RECIPE_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -64,13 +175,17 @@ export const RECIPE_SCHEMA = {
       type: "array",
       description:
         "One per component. Single-component recipes use exactly one section with name \"\". " +
-        "Multi-component recipes (cake + frosting) get one per component plus a final assembly section.",
+        "Multi-component recipes (cake + frosting) get one per component plus a final " +
+        "assembly section.",
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["name", "prep", "finish", "ingredients", "steps"],
+        required: ["name", "prep", "finish", "tree"],
         properties: {
-          name: { type: "string", description: "Component name, lowercase, e.g. 'frosting'. \"\" if single-component." },
+          name: {
+            type: "string",
+            description: "Component name, lowercase, e.g. 'frosting'. \"\" if single-component.",
+          },
           prep: {
             type: "array",
             description: "Setup that combines nothing: preheating, greasing a pan, resting dough.",
@@ -78,82 +193,15 @@ export const RECIPE_SCHEMA = {
           },
           finish: {
             type: "array",
-            description: "Trailing steps that combine nothing: dividing, cooling, cutting, doneness cues.",
+            description:
+              "Trailing steps that combine nothing: dividing, cooling, cutting, doneness cues.",
             items: { type: "string" },
           },
-          ingredients: {
-            type: "array",
-            description: "Every ingredient in this component, exactly once each.",
-            items: {
-              type: "object",
-              additionalProperties: false,
-              required: ["id", "item", "name", "amount", "unit", "metric", "metric_unit", "note", "from"],
-              properties: {
-                id: { type: "string", description: "Unique within the section, e.g. 'i1'." },
-                item: {
-                  type: "string",
-                  description:
-                    "Quantity and name verbatim from the source, keeping both unit systems, " +
-                    "e.g. '2 cups (240 g) all-purpose flour'. This is what gets displayed.",
-                },
-                name: {
-                  type: "string",
-                  description:
-                    "The same ingredient with the quantity stripped, e.g. 'all-purpose flour'. " +
-                    "Used only for rescaling. \"\" if the entry has no quantity at all.",
-                },
-                amount: {
-                  type: "number",
-                  description:
-                    "The leading quantity as a number: 2 for '2 cups', 0.25 for '1/4 tsp'. " +
-                    "0 when the source gives no number ('salt to taste').",
-                },
-                unit: { type: "string", description: "Unit for amount: 'cups', 'tsp', 'large', 'cans'. \"\" if none." },
-                metric: {
-                  type: "number",
-                  description:
-                    "The metric quantity ONLY IF the source states one — 240 for " +
-                    "'2 cups (240 g)'. 0 otherwise. Never convert or estimate it yourself.",
-                },
-                metric_unit: { type: "string", description: "'g' or 'mL'. \"\" if there is no metric amount." },
-                note: { type: "string", description: "State qualifier, e.g. 'room temperature'. \"\" if none." },
-                from: {
-                  type: "string",
-                  description:
-                    "Only for a result carried over from an earlier section: the name of that " +
-                    "section. \"\" for real ingredients.",
-                },
-              },
-            },
-          },
-          steps: {
-            type: "array",
+          tree: {
+            ...operation(MAX_DEPTH - 1, true),
             description:
-              "Operations that combine things. Each consumes the ingredients and earlier steps " +
-              "listed in inputs. Exactly one step must be unreferenced by any other — the final one.",
-            items: {
-              type: "object",
-              additionalProperties: false,
-              required: ["id", "op", "detail", "inputs"],
-              properties: {
-                id: { type: "string", description: "Unique within the section, e.g. 's1'." },
-                op: {
-                  type: "string",
-                  description: "One or two lowercase words: 'mix', 'fold in', 'beat', 'melt', 'bake'.",
-                },
-                detail: {
-                  type: "string",
-                  description:
-                    "Temperature, time, speed, visual cue. Newlines allowed. \"\" if none. " +
-                    "Never put the verb here.",
-                },
-                inputs: {
-                  type: "array",
-                  description: "Ingredient ids and step ids this operation consumes, in top-to-bottom order.",
-                  items: { type: "string" },
-                },
-              },
-            },
+              "The LAST operation of this component — baking, plating, frosting — with " +
+              "everything it needed nested inside it.",
           },
         },
       },
@@ -161,101 +209,83 @@ export const RECIPE_SCHEMA = {
   },
 };
 
-function validateSection(section, index, errors) {
-  const where = section.name ? `section "${section.name}"` : `section ${index + 1}`;
-  const ingredients = section.ingredients || [];
-  const steps = section.steps || [];
+// ------------------------------------------------------------------ validation
 
-  if (!ingredients.length) errors.push(`${where}: has no ingredients.`);
-  if (!steps.length) errors.push(`${where}: has no steps.`);
-
-  const ids = new Map();
-  for (const node of [...ingredients, ...steps]) {
-    if (!node.id) errors.push(`${where}: an entry is missing its id.`);
-    else if (ids.has(node.id)) errors.push(`${where}: id "${node.id}" is used more than once.`);
-    else ids.set(node.id, node);
-  }
-  for (const ing of ingredients) {
-    if (!ing.item) errors.push(`${where}: ingredient "${ing.id}" has an empty item.`);
-    // Rescaling needs the amount and the bare name together; one without the
-    // other would be silently dropped rather than half-working.
-    if (Number(ing.amount) > 0 && !ing.name) {
-      errors.push(
-        `${where}: ingredient "${ing.id}" ("${ing.item}") gives an amount but no name — ` +
-          "set name to the ingredient with the quantity stripped.",
-      );
-    }
-    if (Number(ing.metric) > 0 && !(Number(ing.amount) > 0)) {
-      errors.push(
-        `${where}: ingredient "${ing.id}" ("${ing.item}") gives a metric amount but no amount.`,
-      );
-    }
-  }
-  for (const step of steps) {
-    if (!step.op) errors.push(`${where}: step "${step.id}" has an empty op.`);
-    if (!step.inputs || !step.inputs.length) {
-      errors.push(`${where}: step "${step.id}" ("${step.op}") has no inputs — every operation must combine something.`);
-    }
-  }
-
-  // Reference integrity.
-  const referenced = new Set();
-  for (const step of steps) {
-    for (const ref of step.inputs || []) {
-      if (!ids.has(ref)) {
-        errors.push(`${where}: step "${step.id}" references "${ref}", which is not a known ingredient or step id.`);
-        continue;
-      }
-      if (referenced.has(ref)) {
-        const node = ids.get(ref);
-        const what = node && node.item ? `"${node.item}"` : `"${ref}"`;
-        errors.push(
-          `${where}: ${what} (id ${ref}) is consumed by more than one step. The table is a tree, so ` +
-            "every entry feeds exactly one step. If it really is used at two stages, split it into " +
-            "one entry per use — each with its own id, the amount used at that point, and a note " +
-            'naming the use ("for searing", "for the sauce") — and point each step at its own entry.',
-        );
-      }
-      referenced.add(ref);
-    }
-  }
-
-  for (const ing of ingredients) {
-    if (!referenced.has(ing.id)) {
-      errors.push(`${where}: ingredient "${ing.id}" ("${ing.item}") is never used by any step.`);
-    }
-  }
-
-  const roots = steps.filter((s) => !referenced.has(s.id));
-  if (roots.length === 0 && steps.length) {
-    errors.push(`${where}: the steps form a cycle — no final step.`);
-  } else if (roots.length > 1) {
-    errors.push(
-      `${where}: ${roots.length} steps are final (${roots.map((s) => `"${s.id}"`).join(", ")}) — ` +
-        "they must feed into one another so a single step ends the section.",
-    );
-  }
-  return roots[0];
+function isIngredient(node) {
+  return node && typeof node === "object" && !("children" in node) && !("op" in node);
 }
 
-/** Check the flat form. Returns { ok, errors } with errors phrased for a repair prompt. */
+function walk(node, where, errors, depth, seen) {
+  if (!node || typeof node !== "object") {
+    errors.push(`${where}: found something that is not an ingredient or an operation.`);
+    return;
+  }
+  if (isIngredient(node)) {
+    if (!node.item) errors.push(`${where}: an ingredient has an empty "item".`);
+    else seen.count += 1;
+    // Rescaling needs the amount and the bare name together; one without the other
+    // would be silently dropped rather than half-working.
+    if (Number(node.amount) > 0 && !node.name) {
+      errors.push(
+        `${where}: "${node.item}" gives an amount but no name — set "name" to the ` +
+          "ingredient with the quantity stripped.",
+      );
+    }
+    return;
+  }
+  if (!node.op) errors.push(`${where}: an operation has an empty "op".`);
+  const children = node.children;
+  if (!Array.isArray(children) || children.length === 0) {
+    errors.push(
+      `${where}: operation "${node.op || "?"}" has no children. Every operation must ` +
+        "combine at least one ingredient or earlier operation.",
+    );
+    return;
+  }
+  if (depth > MAX_DEPTH + 2) {
+    errors.push(`${where}: the operations are nested deeper than ${MAX_DEPTH + 2} levels.`);
+    return;
+  }
+  for (const child of children) {
+    walk(child, `${where} → "${node.op}"`, errors, depth + 1, seen);
+  }
+}
+
+/** Check the tree. Errors are phrased to be handed back as a repair prompt. */
 export function validateRecipe(recipe) {
   const errors = [];
   if (!recipe || typeof recipe !== "object") return { ok: false, errors: ["Output is not a JSON object."] };
   if (!recipe.title) errors.push("title is empty.");
   const sections = recipe.sections || [];
   if (!sections.length) errors.push("sections is empty — there must be at least one.");
-  sections.forEach((section, i) => validateSection(section, i, errors));
+
+  sections.forEach((section, i) => {
+    const where = section.name ? `section "${section.name}"` : `section ${i + 1}`;
+    if (!section.tree) {
+      errors.push(`${where}: has no "tree" — the final operation of the component is missing.`);
+      return;
+    }
+    const seen = { count: 0 };
+    walk(section.tree, where, errors, 1, seen);
+    if (!seen.count) errors.push(`${where}: contains no ingredients.`);
+  });
+
   return { ok: errors.length === 0, errors };
 }
 
-function treeFor(node, byId, seen) {
-  if (seen.has(node.id)) throw new Error(`cycle through "${node.id}"`);
-  seen.add(node.id);
-  if (!("inputs" in node)) {
+// --------------------------------------------------------------- normalisation
+
+function cleanNode(node) {
+  if (isIngredient(node)) {
     const leaf = { item: node.item };
     if (node.note) leaf.note = node.note;
-    if (node.from) leaf.from = node.from;
+    // "from" is not part of the wire format any more: a carried-over result is just
+    // an ingredient whose note names the component it came from.
+    const carried = /^from (.+)/i.exec(node.note || "");
+    if (carried) {
+      delete leaf.note;
+      leaf.from = carried[1];
+    }
     // Only carry quantity data through when it is complete enough to rescale.
     if (Number(node.amount) > 0 && node.name) {
       leaf.name = node.name;
@@ -270,11 +300,11 @@ function treeFor(node, byId, seen) {
   }
   const op = { op: node.op };
   if (node.detail) op.detail = node.detail;
-  op.children = node.inputs.map((ref) => treeFor(byId.get(ref), byId, seen));
+  op.children = node.children.map(cleanNode);
   return op;
 }
 
-/** Convert the validated flat form into the nested shape render_recipe.py consumes. */
+/** Strip the empty strings and zeros the schema forces, ready for the renderer. */
 export function buildTree(recipe) {
   const out = { title: recipe.title };
   if (recipe.tags && recipe.tags.length) out.tags = recipe.tags;
@@ -285,11 +315,7 @@ export function buildTree(recipe) {
   }
 
   const sections = (recipe.sections || []).map((section) => {
-    const byId = new Map();
-    for (const node of [...section.ingredients, ...section.steps]) byId.set(node.id, node);
-    const referenced = new Set(section.steps.flatMap((s) => s.inputs || []));
-    const root = section.steps.find((s) => !referenced.has(s.id));
-    const built = { tree: treeFor(root, byId, new Set()) };
+    const built = { tree: cleanNode(section.tree) };
     if (section.name) built.name = section.name;
     if (section.prep && section.prep.length) built.prep = section.prep;
     if (section.finish && section.finish.length) built.finish = section.finish;
