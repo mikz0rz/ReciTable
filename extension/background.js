@@ -10,6 +10,7 @@ import {
   validateRecipe,
   buildTree,
   salvage,
+  inspect,
   fromSimple,
   SIMPLE_SCHEMA,
 } from "./shared/schema.js";
@@ -19,6 +20,7 @@ import {
   buildUserPrompt,
   buildSimplePrompt,
   buildRepairPrompt,
+  buildReshapePrompt,
 } from "./shared/prompt.js";
 
 const RUN_KEY = "run";
@@ -344,6 +346,38 @@ async function askModel(run, settings, extraction, signal) {
   if (!recipe.title || !(recipe.sections || []).length) {
     throw new Error("That page does not look like a recipe.");
   }
+
+  // The shape is legal but may still read as nonsense — most often a chain of
+  // steps in one pan flattened into operations side by side. Ask once, keep the
+  // better answer, and never fail over it.
+  const smells = inspect(recipe);
+  if (smells.length) {
+    const think = begin(run, "shape", "Reconsider the shape");
+    update(run, think, `${smells.length} operation${smells.length === 1 ? "" : "s"} side by side`);
+    try {
+      const again = await complete(
+        settings,
+        [
+          ...messages,
+          { role: "assistant", content: JSON.stringify(recipe) },
+          { role: "user", content: buildReshapePrompt(recipe, smells) },
+        ],
+        { startMode: first.mode, stream: first.streamed, signal, onProgress: reporter(run, think) },
+      );
+      const candidate = salvage(again.data).recipe;
+      const candidateSmells = inspect(candidate);
+      if (validateRecipe(candidate).ok && candidateSmells.length < smells.length) {
+        recipe = candidate;
+        settle(run, think, `nested ${smells.length - candidateSmells.length} chain(s)`);
+      } else {
+        settle(run, think, "kept the first answer", "warn");
+      }
+    } catch (err) {
+      // A failed reconsideration must not lose a recipe that already validates.
+      settle(run, think, `kept the first answer (${err.message})`, "warn");
+    }
+  }
+
   return recipe;
 }
 

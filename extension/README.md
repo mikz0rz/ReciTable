@@ -71,6 +71,14 @@ press Convert.
    attributes to add cook mode, rescaling, and cross-off. See the main
    [README](../README.md#the-tree-already-knows-the-order-of-work).
 
+A shape can be valid and still read as nonsense: a chain of steps in one pan
+flattened into operations side by side renders as several cells stacked in a single
+column. `inspect()` spots that (three or more operations sharing a parent, or two
+where one's verb reads as a continuation — "add", "stir in", "return") and asks for
+one reconsideration, keeping the new answer only if it is genuinely better. It is
+never treated as an error, because deciding which of them continued from the other
+would mean rewriting the recipe. A real two-vessel merge is left alone.
+
 If the nested ask fails twice, there is a third attempt in **simple mode**: a flat
 list of steps in order, each naming the ingredients that join at it, chained into a
 tree here. The schema is under half the size and has nothing structural left to get

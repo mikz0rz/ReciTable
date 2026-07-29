@@ -12,6 +12,7 @@ import {
   validateRecipe,
   buildTree,
   salvage,
+  inspect,
   fromSimple,
   SIMPLE_SCHEMA,
 } from "../extension/shared/schema.js";
@@ -443,6 +444,67 @@ check(
 const empty = salvage({ title: "x", sections: [{ name: "", prep: [], finish: [] }] });
 check("a section with nothing in it is still rejected", !validateRecipe(empty.recipe).ok);
 check("salvage reports what it changed", renamed.repairs.length > 0, JSON.stringify(renamed.repairs));
+
+// ------------------------------------------------- flattened chains (smells)
+//
+// The mango chicken failure: four pan steps rendered as four operations stacked
+// in one column, because the model made them siblings instead of nesting them.
+
+const op = (name, children = []) => ({ op: name, detail: "", children });
+
+const flattened = {
+  title: "Mango Chicken",
+  sections: [
+    {
+      name: "main",
+      prep: [], finish: [],
+      tree: op("simmer", [
+        op("sauté", [ing("1 onion")]),
+        op("add and stir", [ing("4 cloves garlic")]),
+        op("cook", [ing("2 Tbs tomato paste")]),
+        op("sear", [ing("1 1/2 lb chicken thighs")]),
+      ]),
+    },
+  ],
+};
+const flatSmells = inspect(flattened);
+check("four operations side by side are flagged", flatSmells.length === 1, JSON.stringify(flatSmells));
+check(
+  "the smell names them and says how to nest",
+  /"sauté", "add and stir", "cook", "sear"/.test(flatSmells[0]) && /nest it/.test(flatSmells[0]),
+  flatSmells[0],
+);
+check(
+  'it points out the one that reads like a continuation',
+  /"add and stir" in particular/.test(flatSmells[0]),
+  flatSmells[0],
+);
+check("a flattened shape is still VALID, only suspect", validateRecipe(flattened).ok);
+
+// Properly nested, the same recipe has nothing to complain about.
+const nested = {
+  title: "Mango Chicken",
+  sections: [
+    {
+      name: "main",
+      prep: [], finish: [],
+      tree: op("simmer", [
+        op("sear", [ing("1 1/2 lb chicken thighs")]),
+        op("cook", [op("add and stir", [op("sauté", [ing("1 onion")]), ing("4 cloves garlic")]), ing("2 Tbs tomato paste")]),
+      ]),
+    },
+  ],
+};
+check("the nested version is clean", inspect(nested).length === 0, JSON.stringify(inspect(nested)));
+
+// A genuine two-bowl merge must NOT be flagged — the cake depends on it.
+const cake = JSON.parse(readFileSync(new URL("../recipes/classic-birthday-cake.json", import.meta.url)));
+check(
+  "a real two-bowl merge is left alone (the cake whisks dry and beats eggs separately)",
+  inspect(cake).length === 0,
+  JSON.stringify(inspect(cake)),
+);
+check("the brownies are clean too", inspect(JSON.parse(readFileSync(new URL("../recipes/espresso-brownies.json", import.meta.url)))).length === 0);
 
 // ------------------------------------------------------------------ simple mode
 //

@@ -496,6 +496,51 @@ export function validateRecipe(recipe) {
   return { ok: errors.length === 0, errors };
 }
 
+// ---------------------------------------------------------------- smell checks
+//
+// Shapes that are legal but probably wrong. A fan of sibling operations means
+// separate vessels brought together — legitimate for a cake whose dry mix and
+// beaten eggs meet in one bowl. But a chain of steps in the SAME pan flattened
+// into siblings renders as several operations stacked in one column, which reads
+// as nonsense. These are reported for one reconsideration, never treated as
+// errors: guessing at which of them continued from the other would be rewriting
+// the recipe.
+
+/** Verbs that only make sense as a continuation of something already in the pan. */
+const CONTINUES = /^(add|stir in|then|return|mix in|pour in|whisk in|fold in|deglaze|toss in)\b/i;
+
+function fanIn(node, where, smells) {
+  if (!node || typeof node !== "object" || !Array.isArray(node.children)) return;
+  const ops = node.children.filter((c) => c && typeof c === "object" && Array.isArray(c.children));
+  const continuing = ops.filter((c) => CONTINUES.test(String(c.op || "")));
+  if (ops.length >= 3 || (ops.length >= 2 && continuing.length)) {
+    const names = ops.map((c) => `"${c.op}"`).join(", ");
+    smells.push(
+      `${where}: operation "${node.op}" has ${ops.length} operations side by side (${names}). ` +
+        "Side by side means they happened in separate pans or bowls and are being brought " +
+        "together. If any of them instead continued from another — adding to the same pan, " +
+        "stirring something into what is already there — nest it as that operation's child " +
+        `so the chain reads inwards.${
+          continuing.length
+            ? ` ${continuing.map((c) => `"${c.op}"`).join(" and ")} in particular reads like a continuation.`
+            : ""
+        }`,
+    );
+  }
+  for (const child of node.children) fanIn(child, where, smells);
+}
+
+/** Legal but suspect shapes, for one reconsideration round. */
+export function inspect(recipe) {
+  const smells = [];
+  for (const [i, section] of (recipe.sections || []).entries()) {
+    if (!section?.tree) continue;
+    const where = section.name ? `section "${section.name}"` : `section ${i + 1}`;
+    fanIn(section.tree, where, smells);
+  }
+  return smells;
+}
+
 // --------------------------------------------------------------- normalisation
 
 function cleanNode(node) {

@@ -110,6 +110,13 @@ those to time each step.
   from the source lands in none of these, you dropped it — find it a home.
 - **Children read top to bottom in listed order.** When one child is the base
   the rest get added to, list it first so the flow reads downward.
+- **Consecutive steps in the same pan nest; they are not siblings.** Two
+  operations share a parent only when they happened in separate vessels and are
+  being brought together (the cake's whisked dry mix meeting its beaten eggs).
+  Softening onions, then adding spices to that pan, then the tomato paste, is a
+  chain three deep — as siblings they render as three operations stacked in one
+  column, which reads as nonsense. A verb like "add", "stir in" or "return" is
+  the giveaway that an operation continues from another.
 - **The tree's post-order is the cooking sequence**, and the page walks it as
   numbered stages. A tree that is right as a diagram is therefore right as a
   procedure — if the stage order reads wrong for a cook, the tree is wrong.

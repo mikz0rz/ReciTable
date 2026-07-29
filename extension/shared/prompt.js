@@ -22,6 +22,14 @@ Rules:
 
 5. Name each operation with one or two lowercase words — mix, fold in, whisk, beat, melt, sear, simmer, knead, bake. Temperature, time, speed and the visual cue go in "detail", never in the name. Include a duration whenever the source gives one; the page runs a timer for each step from it.
 
+5b. THE MOST IMPORTANT RULE, and the one most often got wrong: consecutive steps in the same pan or bowl are NESTED, not listed side by side. Two operations are children of the same parent only when they happened in SEPARATE vessels and are being brought together — whisking dry ingredients in one bowl while eggs are beaten in another, then combining them.
+
+So if a step adds something to what is already in the pan — "add the garlic", "stir in the spices", "then add the tomato paste", "return the chicken" — the operation it continues from is that step's own child. Softening onions, adding spices to the same pan, then adding tomato paste and cooking it out is a CHAIN four levels deep, not four operations side by side:
+
+  cook (tomato paste) → contains → add and stir (spices) → contains → sauté (onion)
+
+If you find yourself giving one operation three or four operation children, you have almost certainly flattened a chain that should be nested. Ask of each one: was this in its own pan, or did it continue from the step before?
+
 6. An operation with a single child is normal and correct: melting butter on its own, sifting flour on its own.
 
 7. Order "children" the way the rows should read top to bottom. When one child is the base the rest are added to, put it first.
@@ -108,6 +116,28 @@ export function buildUserPrompt(extraction) {
       "and nest inwards until you reach the ingredients.",
   );
   return parts.join("\n");
+}
+
+/**
+ * Not an error — a shape that is legal but probably flattened. Asks for one
+ * reconsideration; whatever comes back is only used if it is actually better.
+ */
+export function buildReshapePrompt(previous, smells) {
+  return [
+    "That is valid, but the shape looks wrong in a way that will read as nonsense:",
+    "",
+    ...smells.map((s) => `- ${s}`),
+    "",
+    "Here is what you returned:",
+    "",
+    JSON.stringify(previous),
+    "",
+    "Operations side by side mean separate pans or bowls being brought together. Steps that " +
+      "continued in the same pan must be nested: the earlier operation becomes a child of the " +
+      "one that adds to it. Change nothing else — same ingredients, same quantities, same " +
+      "wording — and return the corrected JSON. If the operations really did happen in " +
+      "separate vessels, return it unchanged.",
+  ].join("\n");
 }
 
 /** One corrective round: hand the model its own output plus what failed validation. */
