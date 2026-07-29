@@ -6,7 +6,7 @@
 
 import { extractRecipe } from "./extract.js";
 import { complete, PROVIDERS } from "./shared/providers.js";
-import { validateRecipe, buildTree } from "./shared/schema.js";
+import { validateRecipe, buildTree, salvage } from "./shared/schema.js";
 import { SYSTEM_PROMPT, buildUserPrompt, buildRepairPrompt } from "./shared/prompt.js";
 
 const RUN_KEY = "run";
@@ -242,15 +242,22 @@ async function askModel(run, settings, extraction, signal) {
     onProgress: reporter(run, step),
   });
   await rememberModes(settings, first.mode, first.streamed);
+  const mended = first.repairs?.length ? ` · mended JSON (${first.repairs.join(", ")})` : "";
   settle(
     run,
     step,
-    `${MODE_LABEL[first.mode]}${first.streamed ? ", streamed" : ""} · ${kB(first.chars)}`,
+    `${MODE_LABEL[first.mode]}${first.streamed ? ", streamed" : ""} · ${kB(first.chars)}${mended}`,
+    first.repairs?.length ? "warn" : "ok",
   );
 
   const check = begin(run, "check", "Check the structure");
-  let recipe = first.data;
+  // Straighten out a wonky envelope before judging the content.
+  const salvaged = salvage(first.data);
+  let recipe = salvaged.recipe;
   let result = validateRecipe(recipe);
+  if (salvaged.repairs.length) {
+    console.info("[recitable] salvaged:", salvaged.repairs.join("; "));
+  }
 
   if (result.ok) {
     const sections = (recipe.sections || []).length;
@@ -260,7 +267,15 @@ async function askModel(run, settings, extraction, signal) {
     );
     settle(run, check, `${ingredients} ingredients · ${sections} section(s)`);
   } else {
-    settle(run, check, `${result.errors.length} problem(s) — ${result.errors[0]}`, "warn");
+    settle(
+      run,
+      check,
+      `${result.errors.length} problem(s) — ${result.errors[0]}`,
+      "warn",
+    );
+    // Keep what the model actually said, so a failure can be diagnosed from the
+    // report instead of guessed at.
+    run.sample = JSON.stringify(first.data).slice(0, 900);
     const repair = begin(run, "repair", "Ask for a fix");
     update(run, repair, `sent back ${result.errors.length} problem(s)`);
     const repaired = await complete(
@@ -277,7 +292,7 @@ async function askModel(run, settings, extraction, signal) {
         onProgress: reporter(run, repair),
       },
     );
-    recipe = repaired.data;
+    recipe = salvage(repaired.data).recipe;
     result = validateRecipe(recipe);
     settle(run, repair, result.ok ? "fixed" : "still malformed", result.ok ? "ok" : "error");
   }
@@ -285,6 +300,7 @@ async function askModel(run, settings, extraction, signal) {
   if (!result.ok) {
     const err = new Error(result.errors[0]);
     err.detail = `${result.errors.join("\n")}\nA model that cannot fix this on the second pass usually needs replacing with a stronger one.`;
+    err.sample = JSON.stringify(recipe).slice(0, 900);
     throw err;
   }
   if (!recipe.title || !(recipe.sections || []).length) {
@@ -389,6 +405,7 @@ async function convert(tabId, url) {
       detail: err.detail || "",
       status: err.status || null,
       needsSetup: Boolean(err.needsSetup),
+      sample: err.sample || run.sample || "",
     });
     badgeSettled("error");
     await notify(run);

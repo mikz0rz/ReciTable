@@ -221,6 +221,88 @@ export async function listModels(settings, { freeOnly = false } = {}) {
   return models;
 }
 
+const lastMeaningful = (chars) => {
+  for (let i = chars.length - 1; i >= 0; i--) {
+    if (!/\s/.test(chars[i])) return chars[i];
+  }
+  return "";
+};
+
+const nextMeaningful = (text, from) => {
+  for (let i = from; i < text.length; i++) {
+    if (!/\s/.test(text[i])) return text[i];
+  }
+  return "";
+};
+
+/**
+ * Conservative syntax repair for the JSON weak models actually emit: a missing
+ * comma between values, a trailing comma before a closing brace, a raw newline
+ * inside a string. It only ever touches punctuation and escaping — never content —
+ * and reports what it changed. Truncation is deliberately NOT repaired: closing
+ * the brackets on a half-written recipe would silently drop ingredients.
+ */
+export function repairJson(text) {
+  const out = [];
+  const fixes = new Set();
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        out.push(ch);
+      } else if (ch === "\\") {
+        escaped = true;
+        out.push(ch);
+      } else if (ch === '"') {
+        inString = false;
+        out.push(ch);
+      } else if (ch === "\n" || ch === "\r") {
+        out.push("\\n");
+        fixes.add("escaped a newline inside a string");
+      } else if (ch === "\t") {
+        out.push("\\t");
+        fixes.add("escaped a tab inside a string");
+      } else {
+        out.push(ch);
+      }
+      continue;
+    }
+
+    if (ch === '"' || ch === "{" || ch === "[") {
+      const previous = lastMeaningful(out);
+      // A value directly after another value is missing its separator.
+      if (previous === '"' || previous === "}" || previous === "]" || /[\w]/.test(previous)) {
+        out.push(",");
+        fixes.add("added a missing comma between values");
+      }
+      if (ch === '"') inString = true;
+      out.push(ch);
+      continue;
+    }
+
+    if (ch === ",") {
+      const following = nextMeaningful(text, i + 1);
+      if (following === "}" || following === "]") {
+        fixes.add("removed a trailing comma");
+        continue;
+      }
+    }
+    out.push(ch);
+  }
+  return { text: out.join(""), fixes: [...fixes] };
+}
+
+/** Where the parser gave up, with enough either side of it to see the problem. */
+function around(text, message) {
+  const at = Number(/position (\d+)/.exec(message)?.[1]);
+  if (!Number.isFinite(at)) return text.slice(0, 200);
+  return `…${text.slice(Math.max(0, at - 90), at)}▶HERE◀${text.slice(at, at + 90)}…`;
+}
+
 /** Pull the first JSON object out of a response that may be fenced or prefaced with prose. */
 export function parseJsonLoosely(text) {
   if (!text) throw new Error("The model returned an empty response.");
@@ -231,6 +313,7 @@ export function parseJsonLoosely(text) {
   } catch {
     // Fall through to brace matching.
   }
+
   const start = candidate.indexOf("{");
   if (start === -1) throw new Error("No JSON object found in the model's response.");
   let depth = 0;
@@ -247,7 +330,24 @@ export function parseJsonLoosely(text) {
     if (ch === '"') inString = true;
     else if (ch === "{") depth++;
     else if (ch === "}" && --depth === 0) {
-      return JSON.parse(candidate.slice(start, i + 1));
+      const region = candidate.slice(start, i + 1);
+      try {
+        return JSON.parse(region);
+      } catch (first) {
+        // Balanced but invalid: try the conservative repairs before giving up.
+        const { text: mended, fixes } = repairJson(region);
+        try {
+          const parsed = JSON.parse(mended);
+          parsed.__repairs = fixes;
+          return parsed;
+        } catch {
+          const err = new Error(
+            `The model's JSON is malformed: ${first.message}. Nothing could be repaired.`,
+          );
+          err.sample = around(region, first.message);
+          throw err;
+        }
+      }
     }
   }
   throw new Error("The model's JSON response was cut off before it closed.");
@@ -453,7 +553,10 @@ export async function complete(settings, messages, { startMode, signal, onProgre
         "The model ran out of output tokens mid-recipe. Try a model with more headroom.",
       );
     }
-    return { data: parseJsonLoosely(text), mode, streamed: streaming, chars: text.length, usage };
+    const data = parseJsonLoosely(text);
+    const repairs = data.__repairs || [];
+    delete data.__repairs;
+    return { data, repairs, mode, streamed: streaming, chars: text.length, usage };
   };
 
   for (const mode of modes) {

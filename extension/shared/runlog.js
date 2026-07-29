@@ -76,6 +76,7 @@ export function diagnostics(run) {
       url: run?.url,
       state: run?.state,
       error: run?.error,
+      modelOutputSample: run?.error?.sample || run?.sample || undefined,
       steps: run?.steps?.map((s) => ({
         label: s.label,
         detail: s.detail,

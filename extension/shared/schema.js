@@ -209,6 +209,129 @@ export const RECIPE_SCHEMA = {
   },
 };
 
+// ------------------------------------------------------------------- salvage
+//
+// Free models routinely get the envelope wrong even under a strict schema, because
+// enforcement depends on the provider's backend. Where the recipe content is all
+// present and only the wrapper is off, fixing it here is deterministic and invents
+// nothing — far better than spending a repair round on it. Anything that would
+// require guessing at recipe content is left for validation to reject.
+
+/** Keys a model plausibly reaches for instead of "tree". */
+const TREE_KEYS = [
+  "tree", "root", "final", "final_step", "operation", "step", "steps",
+  "method", "instructions", "process", "stages", "plan",
+];
+
+function looksLikeOperation(node) {
+  return Boolean(node) && typeof node === "object" && "op" in node && "children" in node;
+}
+
+function salvageNode(node) {
+  if (Array.isArray(node)) {
+    // A single-element array where an object belongs.
+    if (node.length === 1) return salvageNode(node[0]);
+    return node;
+  }
+  if (typeof node === "string") return { item: node }; // an ingredient written as a bare string
+  if (!node || typeof node !== "object") return node;
+  if (!("children" in node)) return node;
+  const children = Array.isArray(node.children) ? node.children : [node.children];
+  return { ...node, children: children.map(salvageNode) };
+}
+
+/**
+ * A flat list of operations, in order, instead of a nested one. Chain them: each
+ * step's result feeds the next, which is what a linear recipe means anyway. This
+ * infers structure from order rather than inventing content, and it is reported.
+ */
+function chain(steps) {
+  const ops = steps.map(salvageNode);
+  if (ops.length < 2 || !ops.every(looksLikeOperation)) return null;
+  return ops.reduce((previous, step) => ({
+    ...step,
+    children: [previous, ...(Array.isArray(step.children) ? step.children : [])],
+  }));
+}
+
+function salvageSection(section) {
+  if (!section || typeof section !== "object") return section;
+  const out = { ...section };
+
+  // A flat list where the nested root belongs.
+  for (const key of TREE_KEYS) {
+    if (Array.isArray(out[key])) {
+      const chained = chain(out[key]);
+      if (chained) {
+        out.tree = chained;
+        if (key !== "tree") delete out[key];
+        break;
+      }
+    }
+  }
+
+  if (!out.tree) {
+    // The tree under another name…
+    for (const key of TREE_KEYS) {
+      if (key !== "tree" && out[key]) {
+        const candidate = salvageNode(out[key]);
+        if (looksLikeOperation(candidate)) {
+          out.tree = candidate;
+          delete out[key];
+          break;
+        }
+      }
+    }
+    // …or the section object is itself the operation.
+    if (!out.tree && looksLikeOperation(section)) {
+      out.tree = salvageNode({ op: section.op, detail: section.detail || "", children: section.children });
+      delete out.op;
+      delete out.detail;
+      delete out.children;
+    }
+  } else {
+    out.tree = salvageNode(out.tree);
+  }
+  return out;
+}
+
+/** Straighten out a wonky envelope. Returns the recipe and what was repaired. */
+export function salvage(recipe) {
+  if (!recipe || typeof recipe !== "object") return { recipe, repairs: [] };
+  const repairs = [];
+  const out = { ...recipe };
+
+  let sections = out.sections;
+  if (!Array.isArray(sections)) sections = sections ? [sections] : [];
+
+  // A single-component recipe with the tree hoisted to the top level.
+  if (!sections.length) {
+    for (const key of TREE_KEYS) {
+      const candidate = out[key] && salvageNode(out[key]);
+      if (looksLikeOperation(candidate)) {
+        sections = [{ name: "", prep: out.prep || [], finish: out.finish || [], tree: candidate }];
+        repairs.push(`moved a top-level "${key}" into a section`);
+        break;
+      }
+    }
+  }
+
+  out.sections = sections.map((section, i) => {
+    const fixed = salvageSection(section);
+    if (!looksLikeOperation(section?.tree) && looksLikeOperation(fixed.tree)) {
+      const flat = TREE_KEYS.some((k) => Array.isArray(section?.[k]) && section[k].length > 1);
+      repairs.push(
+        flat
+          ? `chained ${section[TREE_KEYS.find((k) => Array.isArray(section[k]))].length} flat steps into a tree in section ${i + 1}`
+          : `rebuilt the tree of section ${i + 1} from a differently-shaped field`,
+      );
+    }
+    return fixed;
+  });
+
+  return { recipe: out, repairs };
+}
+
 // ------------------------------------------------------------------ validation
 
 function isIngredient(node) {
@@ -262,7 +385,18 @@ export function validateRecipe(recipe) {
   sections.forEach((section, i) => {
     const where = section.name ? `section "${section.name}"` : `section ${i + 1}`;
     if (!section.tree) {
-      errors.push(`${where}: has no "tree" — the final operation of the component is missing.`);
+      errors.push(
+        `${where}: has no "tree" — it must hold the component's final operation, an object ` +
+          'with "op", "detail" and "children".',
+      );
+      return;
+    }
+    if (!("children" in section.tree)) {
+      errors.push(
+        `${where}: "tree" holds an ingredient, not an operation. It must be the final operation ` +
+          'of the component — an object with "op", "detail" and "children" — with the ingredients ' +
+          "nested inside it.",
+      );
       return;
     }
     const seen = { count: 0 };

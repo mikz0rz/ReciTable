@@ -198,6 +198,37 @@ const prose = await failsWith(() =>
 );
 check("a reply with no JSON in it is reported", /No JSON object/.test(prose), prose);
 
+// The failure seen on a real recipe: structurally balanced but invalid JSON.
+const missingComma = await failsWith(() =>
+  new Response(sse([openaiDelta('{"a": 1 "b": 2}')]), { status: 200 }),
+);
+check(
+  "a missing comma is repaired rather than reported",
+  missingComma === "(no error thrown)",
+  missingComma,
+);
+
+stubFetch(() => new Response(sse([openaiDelta('{"a": 1 "b": [1, 2,] }')]), { status: 200 }));
+const mended = await complete(SETTINGS, MESSAGES, {});
+check("the repair fixes both a missing and a trailing comma", mended.data.b.length === 2);
+check("the repairs are reported", mended.repairs.length >= 2, JSON.stringify(mended.repairs));
+
+stubFetch(() => new Response(sse([openaiDelta('{"a": "line one\nline two"}')]), { status: 200 }));
+const newline = await complete(SETTINGS, MESSAGES, {});
+check("a raw newline inside a string is escaped", newline.data.a.includes("\n"));
+
+// Genuinely unfixable: say where it broke and show the text there.
+const hopeless = await failsWith(() =>
+  new Response(sse([openaiDelta('{"a": @@@ , "b": 2}')]), { status: 200 }),
+);
+check("unrepairable JSON names its position", /malformed/.test(hopeless), hopeless);
+
+// A repair must never quietly close a truncated recipe.
+const cutOff = await failsWith(() =>
+  new Response(sse([openaiDelta('{"sections": [{"tree": {"op": "bake"')]), { status: 200 }),
+);
+check("truncation is reported, not closed up", /cut off/.test(cutOff), cutOff);
+
 // A thrown non-Error used to make the error handler itself throw.
 const nonError = await failsWith(() => {
   throw "a bare string";

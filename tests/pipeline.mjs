@@ -8,7 +8,7 @@
 // Usage: node tests/pipeline.mjs
 
 import { readFileSync } from "node:fs";
-import { validateRecipe, buildTree } from "../extension/shared/schema.js";
+import { validateRecipe, buildTree, salvage } from "../extension/shared/schema.js";
 import { renderArticle } from "../extension/shared/layout.js";
 import { parseJsonLoosely } from "../extension/shared/providers.js";
 import { ALL_SCENES, sceneFor } from "../extension/shared/kitchen.js";
@@ -180,11 +180,11 @@ check(
 // A single unnamed section should flatten into a top-level tree, not a sections array.
 check("single unnamed section flattens to a top-level tree", "tree" in built && !("sections" in built));
 
-// ------------------------------------------------------- cross-section refs
-
 const ing = (item, note = "") => ({
   item, name: "", amount: 0, unit: "", metric: 0, metric_unit: "", note,
 });
+
+// ------------------------------------------------------- cross-section refs
 
 const TWO_SECTION = {
   title: "Two Part",
@@ -353,6 +353,89 @@ check(
   durations.every(([text, want]) => parseSeconds(text) === want),
   durations.filter(([t, w]) => parseSeconds(t) !== w).map(([t, w]) => `${JSON.stringify(t)} -> ${parseSeconds(t)} not ${w}`).join("; "),
 );
+
+// ------------------------------------------------------- salvaging the envelope
+//
+// Free models get the wrapper wrong even under a strict schema. Where the recipe
+// content is all there, accepting it beats spending a repair round.
+
+const salvages = (mutate) => {
+  const wire = structuredClone(BROWNIES_WIRE);
+  mutate(wire, wire.sections[0]);
+  const { recipe, repairs } = salvage(wire);
+  return { ok: validateRecipe(recipe).ok, repairs, recipe };
+};
+
+// The exact failure seen on a real muffin recipe: no "tree" key at all.
+const renamed = salvages((wire, section) => {
+  section.steps = section.tree;
+  delete section.tree;
+});
+check("a tree under the wrong key is recovered", renamed.ok, renamed.repairs.join("; "));
+
+const sectionIsOp = salvages((wire, section) => {
+  Object.assign(section, section.tree);
+  delete section.tree;
+});
+check("a section that is itself the operation is recovered", sectionIsOp.ok, sectionIsOp.repairs.join("; "));
+
+const hoisted = salvages((wire, section) => {
+  wire.tree = section.tree;
+  wire.prep = section.prep;
+  wire.sections = [];
+});
+check("a tree hoisted to the top level is recovered", hoisted.ok, hoisted.repairs.join("; "));
+check(
+  "the hoisted prep rows survive the move",
+  (hoisted.recipe.sections[0].prep || []).length === 2,
+);
+
+const wrapped = salvages((wire, section) => {
+  section.tree = [section.tree]; // an object wrapped in an array
+});
+check("an operation wrapped in an array is unwrapped", wrapped.ok, wrapped.repairs.join("; "));
+
+const stringly = salvages((wire, section) => {
+  section.tree.children[0].children[0] = "1 cup (200 g) sugar";
+});
+check("an ingredient written as a bare string is accepted", stringly.ok, stringly.repairs.join("; "));
+
+// A flat list of operations instead of a nested one: chain them in order.
+const flat = salvages((wire, section) => {
+  section.steps = [
+    { op: "melt", detail: "", children: [ing("4 oz (115 g) unsalted butter")] },
+    { op: "mix", detail: "", children: [ing("1 cup (200 g) sugar")] },
+    { op: "bake", detail: "30 to 40 min", children: [] },
+  ];
+  delete section.tree;
+});
+check("a flat list of steps is chained into a tree", flat.ok, flat.repairs.join("; "));
+check(
+  "chaining reports itself, since it infers from order",
+  /chained 3 flat steps/.test(flat.repairs.join("; ")),
+  flat.repairs.join("; "),
+);
+check(
+  "the chain puts the earlier step inside the later one",
+  flat.recipe.sections[0].tree.op === "bake" &&
+    flat.recipe.sections[0].tree.children[0].op === "mix" &&
+    flat.recipe.sections[0].tree.children[0].children[0].op === "melt",
+);
+
+// A "tree" holding an ingredient would render as one meaningless cell.
+const leafRoot = firstError((s) => {
+  s.tree = ing("2 cups flour");
+});
+check(
+  "a tree that is an ingredient rather than an operation is caught",
+  /holds an ingredient/.test(leafRoot),
+  leafRoot,
+);
+
+// Salvage must not paper over missing content.
+const empty = salvage({ title: "x", sections: [{ name: "", prep: [], finish: [] }] });
+check("a section with nothing in it is still rejected", !validateRecipe(empty.recipe).ok);
+check("salvage reports what it changed", renamed.repairs.length > 0, JSON.stringify(renamed.repairs));
 
 // ----------------------------------------------------------- the ascii kitchen
 

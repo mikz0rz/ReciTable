@@ -34,7 +34,11 @@ Rules:
 
 11. "deck" is one plain sentence describing the dish. "tags" are two to four short factual characteristics visible in the recipe itself — "one pan", "no mixer", "make ahead" — not marketing. "serves" is the number of servings only if the source states it. "credit" attributes the original. Notes get a two-to-four-word title and a sentence or two.
 
-Work only from the recipe given to you. If the input is not a recipe, return a title of "" and no sections.`;
+Work only from the recipe given to you. If the input is not a recipe, return a title of "" and no sections.
+
+Here is a complete, minimal example of the exact shape. Note that "tree" holds one operation object, that an operation appears as a child of the operation it feeds, and that every field is present even when empty:
+
+{"title":"Buttered Toast","deck":"Toast, buttered while hot.","tags":["one pan"],"serves":1,"yield":"1 slice","vessel":"","oven":"","active":"","time":"3 min","credit":"","notes":[{"title":"Butter first","body":"It only melts in while the toast is hot."}],"sections":[{"name":"","prep":["Heat the grill"],"finish":["Cut in half"],"tree":{"op":"spread","detail":"while hot","children":[{"op":"toast","detail":"2 min","children":[{"item":"1 slice bread","name":"bread","amount":1,"unit":"slice","metric":0,"metric_unit":"","note":""}]},{"item":"1 Tbs (14 g) butter","name":"butter","amount":1,"unit":"Tbs","metric":14,"metric_unit":"g","note":"softened"}]}}]}`;
 
 function structuredBlock(structured) {
   const lines = [`Recipe name: ${structured.name}`];

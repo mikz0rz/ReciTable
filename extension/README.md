@@ -55,10 +55,15 @@ press Convert.
    written inside the operation that consumes it, built backwards from the finished
    dish. [shared/schema.js](shared/schema.js) spells the tree out to a fixed depth,
    because JSON Schema can't express recursion.
-3. **Validate** — there are no ids, so a dangling reference, a cycle, or an
-   ingredient consumed twice cannot be expressed at all. What's left to check is
-   emptiness and half-given quantities; a failure goes back to the model once,
-   naming what broke.
+3. **Salvage, then validate** — strict schemas are not honoured by every free
+   model, so `salvage()` first straightens out a wonky envelope: a tree under
+   another key, a section that is itself the operation, a tree hoisted to the top
+   level, an object wrapped in an array, an ingredient written as a bare string,
+   or a flat list of steps (chained in order, which is what a linear recipe means).
+   It repairs the wrapper only and reports what it changed. Then validation checks
+   what remains — emptiness, half-given quantities — and a failure goes back to the
+   model once with the specific defect named, keeping a sample of what the model
+   actually returned in the diagnostics.
 4. **Render** — [shared/layout.js](shared/layout.js) assembles the tree and
    computes the rowspan/colspan layout, stamping each operation with its stage in
    the cooking sequence (post-order of the tree) and the rows it consumes.
@@ -127,6 +132,12 @@ Deadlines and failure reporting:
   free-model quota, 404 at the model id, 5xx at the provider.
 - Ending mid-JSON, replying with prose, refusing, hitting the output limit, or
   dying mid-stream each get their own message rather than a generic failure.
+- **Malformed JSON is repaired where it safely can be**: a missing comma between
+  values, a trailing comma, a raw newline inside a string. Only punctuation and
+  escaping, never content, and the log says what was mended. Truncation is
+  deliberately *not* repaired — closing the brackets on a half-written recipe would
+  silently drop ingredients — so it is reported instead, with the text either side
+  of the position the parser gave up at.
 - A run still marked running when nothing is running means Chrome restarted the
   worker underneath it; the log says so instead of spinning. A heartbeat keeps the
   worker awake during a request to make that rare.
