@@ -182,7 +182,7 @@ async function loadSettings() {
   const stored = await chrome.storage.local.get([
     "provider", "keys", "model", "baseUrl", "formatModes",
   ]);
-  const provider = stored.provider || "openrouter";
+  const provider = stored.provider || "nexos";
   return {
     provider,
     apiKey: (stored.keys || {})[provider] || "",

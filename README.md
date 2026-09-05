@@ -10,8 +10,9 @@ it consumes, so the method reads as one flow diagram — the
 Two ways in:
 
 **In the browser** — a Chrome extension that converts the page you're reading.
-Load [extension/](extension/) unpacked, add an API key (OpenRouter's free models
-work), and click the toolbar icon. See [extension/README.md](extension/README.md).
+Load [extension/](extension/) unpacked, add an API key ([nexos.ai](https://workspace.nexos.ai)
+is the default; OpenRouter has free models), and click the toolbar icon. See
+[extension/README.md](extension/README.md).
 
 **From the command line** — a recipe as JSON:
 

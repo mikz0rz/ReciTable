@@ -144,7 +144,7 @@ Points that are easy to get wrong here:
 ### Providers: two protocols, two degradation ladders
 
 `extension/shared/providers.js` speaks OpenAI-compatible `/chat/completions`
-(OpenRouter, OpenAI, local servers) and Anthropic `/v1/messages`. `complete()` walks
+(Nexos — the default, OpenRouter, OpenAI, local servers) and Anthropic `/v1/messages`. `complete()` walks
 two ladders and reports which rungs worked so the caller can cache them:
 
 - structured output: strict `json_schema` → `json_object` → prompt-only

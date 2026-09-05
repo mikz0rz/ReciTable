@@ -68,7 +68,7 @@ function render(run) {
 }
 
 async function refreshConfig() {
-  const { provider = "openrouter", keys = {}, model = "" } = await chrome.storage.local.get([
+  const { provider = "nexos", keys = {}, model = "" } = await chrome.storage.local.get([
     "provider", "keys", "model",
   ]);
   const label = PROVIDERS[provider]?.label || provider;
@@ -82,7 +82,7 @@ async function refreshConfig() {
   outcome.textContent = hasKey ? "Pick a model in settings." : "Add an API key to get started.";
   const why = document.createElement("span");
   why.className = "why";
-  why.textContent = "OpenRouter has models that cost nothing.";
+  why.textContent = "Generate a key at workspace.nexos.ai, then paste it into settings.";
   outcome.append(why);
 }
 

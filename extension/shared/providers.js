@@ -10,6 +10,15 @@
 import { RECIPE_SCHEMA } from "./schema.js";
 
 export const PROVIDERS = {
+  nexos: {
+    label: "Nexos",
+    kind: "openai",
+    baseUrl: "https://api.nexos.ai/v1",
+    keysUrl: "https://workspace.nexos.ai/",
+    keyHint: "your nexos.ai key",
+    canListModels: true,
+    note: "Generate a key at workspace.nexos.ai (Settings → API Keys). The API needs a subscription with credits.",
+  },
   openrouter: {
     label: "OpenRouter",
     kind: "openai",

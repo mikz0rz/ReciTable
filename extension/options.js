@@ -169,7 +169,7 @@ async function init() {
   }
   const stored = await chrome.storage.local.get(["provider", "keys", "model", "baseUrl"]);
   keys = stored.keys || {};
-  const provider = stored.provider || "openrouter";
+  const provider = stored.provider || "nexos";
   providerSelect.value = provider;
   applyProvider(provider, { model: stored.model, baseUrl: stored.baseUrl });
 }

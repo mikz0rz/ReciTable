@@ -36,7 +36,8 @@ Any of these work — the extension speaks both the OpenAI and Anthropic wire fo
 
 | Provider | Notes |
 | --- | --- |
-| **OpenRouter** | Default. The model list can be filtered to **free** models (`:free`), which cost nothing but are rate-limited and vary in quality. |
+| **Nexos** | Default. OpenAI-compatible — generate a key at [workspace.nexos.ai](https://workspace.nexos.ai) (Settings → API Keys); the API needs a subscription with credits. |
+| **OpenRouter** | The model list can be filtered to **free** models (`:free`), which cost nothing but are rate-limited and vary in quality. |
 | **Anthropic** | Defaults to `claude-opus-5`. |
 | **OpenAI** | Any chat model on the account. |
 | **Other OpenAI-compatible** | Your own base URL — a company gateway, or a local server like `http://localhost:11434/v1` for Ollama. Chrome asks for permission for that host on save. |
@@ -57,7 +58,7 @@ reaches the clipboard, in case a provider echoes the `Authorization` header into
 error.
 
 **Permissions.** `activeTab` means the extension can read a page only on the click
-that converts it, never in the background. The three `host_permissions` are the API
+that converts it, never in the background. The `host_permissions` are the API
 endpoints. A custom endpoint asks for its own origin at the moment you save it —
 `https://` anywhere, but `http://` only for `localhost`/`127.0.0.1`, because over
 plain HTTP the key would travel in cleartext. No `web_accessible_resources` and no
