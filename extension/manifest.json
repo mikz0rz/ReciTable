@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ReciTable",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Plain recipe in, step-by-step table out: ingredients down the left, operations bracketing them right.",
   "permissions": [
     "activeTab",

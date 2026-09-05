@@ -89,8 +89,11 @@ export function scrub(text) {
 
 /** Everything needed to describe a failure, and no API key. */
 export function diagnostics(run) {
+  // The manifest read needs chrome; the tests call this with no extension APIs.
+  const version = globalThis.chrome?.runtime?.getManifest?.().version;
   return scrub(JSON.stringify(
     {
+      extensionVersion: version,
       provider: run?.provider,
       model: run?.model,
       url: run?.url,

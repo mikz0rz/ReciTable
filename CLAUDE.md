@@ -202,3 +202,13 @@ which has `chrome.*` access, meaning a single missed escape there could read
   and `&quot;` inside a value cannot close it — a naive regex reports both as holes).
 - `diagnostics()` scrubs key-shaped strings, because that report goes to the
   clipboard and a provider may echo the `Authorization` header into an error body.
+
+## Versioning
+
+`extension/manifest.json` holds the version — the single source of truth;
+`Copy diagnostics` reports it from there, so a bug report names the iteration
+that produced it. A release is: `python3 scripts/release.py minor` (bumps the
+manifest, opens the CHANGELOG.md section), fill in the bullets, then commit,
+`git tag vX.Y.Z`, and push with `--tags`. Tags are the backtrack anchors:
+`git diff v0.1.0..v0.2.0`, `git checkout v0.1.0`. Breaking the recipe-JSON
+format or the renderer's markup bumps major; new behaviour minor; fixes patch.
