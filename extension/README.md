@@ -107,6 +107,15 @@ one reconsideration, keeping the new answer only if it is genuinely better. It i
 never treated as an error, because deciding which of them continued from the other
 would mean rewriting the recipe. A real two-vessel merge is left alone.
 
+Valid and complete are not the same either: the model once wrote "cook, stirring
+occasionally, until lightly golden" and never wrote the onion it cooks. When the
+page exposes structured data, the run checks every source ingredient against the
+returned tree — by word overlap, since legitimate rewording must not count as
+missing — and asks once for anything absent to be added where it is used. A
+reconsideration of the shape is rejected if it would drop an ingredient the
+earlier answer had. If the model cannot cover the gap, the table still renders,
+with the missing ingredient named in the log.
+
 If the nested ask fails twice, there is a third attempt in **simple mode**: a flat
 list of steps in order, each naming the ingredients that join at it, chained into a
 tree here. The schema is under half the size and has nothing structural left to get

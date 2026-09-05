@@ -541,6 +541,87 @@ export function inspect(recipe) {
   return smells;
 }
 
+// ------------------------------------------------------------------ coverage
+//
+// A tree can be structurally valid and still quietly wrong: the model wrote the
+// step but dropped the ingredient — "Add onion and cook until golden" rendered
+// as a cook cell with no onion row anywhere. When the page has structured data
+// we hold the source's own ingredient list, so a silent drop is checkable.
+//
+// Matching is token overlap, not equality, because the model legitimately
+// rewords ("1 large yellow onion (10 ounces; 284 g), finely chopped" becomes
+// "yellow onion, finely chopped"). A source line counts as covered when more
+// than half its distinctive words land in any one returned ingredient — a
+// majority, so a different line that merely shares generic words ("yellow …
+// chopped" on the potatoes) cannot stand in for the one that was dropped.
+
+const COVER_STOP = new Set(
+  `a an the and or of for to with into in on plus about approximately divided
+   cup cups tablespoon tablespoons teaspoon teaspoons tbs tsp tbsp
+   ounce ounces oz pound pounds lb lbs gram grams g kg
+   millilitre millilitres milliliter milliliters ml litre litres liter liters l
+   pinch pinches dash dashes can cans clove cloves stick sticks
+   large medium small extra whole`
+    .split(/\s+/)
+    .filter(Boolean),
+);
+
+function coverTokens(text) {
+  return String(text)
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 2 && !COVER_STOP.has(t) && !/^\d/.test(t));
+}
+
+function coversLine(line, items) {
+  const wanted = coverTokens(line);
+  if (!wanted.length) return true; // nothing distinctive to look for
+  return items.some((item) => {
+    const have = new Set(coverTokens(item));
+    let shared = 0;
+    for (const token of new Set(wanted)) if (have.has(token)) shared++;
+    return shared * 2 > wanted.length;
+  });
+}
+
+/**
+ * Source ingredient lines that appear nowhere in the recipe. Works on the nested
+ * shape, which simple mode produces too via fromSimple. Returns [] when the page
+ * had no structured list to check against.
+ */
+export function missingIngredients(recipe, sourceLines) {
+  const items = [];
+  for (const section of recipe?.sections || []) {
+    const visit = (node) => {
+      if (!node || typeof node !== "object") return;
+      if (isIngredient(node)) {
+        items.push(`${node.item || ""} ${node.name || ""}`);
+        return;
+      }
+      for (const child of node.children || []) visit(child);
+    };
+    visit(section?.tree);
+  }
+  return (sourceLines || []).filter((line) => !coversLine(line, items));
+}
+
+/** Ingredient leaves across every section — the count the run log reports. */
+export function countIngredients(recipe) {
+  let count = 0;
+  for (const section of recipe?.sections || []) {
+    const visit = (node) => {
+      if (!node || typeof node !== "object") return;
+      if (isIngredient(node)) {
+        if (node.item) count += 1;
+        return;
+      }
+      for (const child of node.children || []) visit(child);
+    };
+    visit(section?.tree);
+  }
+  return count;
+}
+
 // --------------------------------------------------------------- normalisation
 
 function cleanNode(node) {

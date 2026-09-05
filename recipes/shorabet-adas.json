@@ -1,0 +1,119 @@
+{
+  "title": "Shorabet Adas (Lentil Soup)",
+  "tags": ["30-minute", "blended soup", "optional pita chips"],
+  "deck": "A 30-minute red lentil soup simmered with onion, potatoes, carrots, and cumin, blended until creamy, and served with lemon wedges and pita chips.",
+  "serves": 6,
+  "vessel": "large pot; large stainless steel skillet",
+  "time": "30 min",
+  "source": "https://www.seriouseats.com/shorabet-adas-lentil-soup-recipe-11906703",
+  "credit": "Recipe by Laila Ibrahim, from Serious Eats.",
+  "notes": [
+    { "title": "Lemon-forward", "body": "Serve with plenty of large lemon wedges — shorabet adas is meant to be bright and lemon-forward." },
+    { "title": "Stock choice", "body": "Chicken stock adds savoriness to the soup; vegetable stock works well for a vegan version." },
+    { "title": "Make-ahead", "body": "Leftovers can be refrigerated in an airtight container for up to 4 days." }
+  ],
+  "sections": [
+    {
+      "name": "soup",
+      "prep": [],
+      "finish": [],
+      "tree": {
+        "op": "blend",
+        "detail": "on medium-high speed until smooth, about 1 minute (or with an immersion blender)",
+        "children": [
+          {
+            "op": "simmer",
+            "detail": "bring to a boil over medium-high heat, reduce heat to a simmer, and cook, covered, until the potatoes, lentils, and carrots are tender, about 15 minutes",
+            "children": [
+              {
+                "op": "stir in",
+                "detail": "",
+                "children": [
+                  {
+                    "op": "cook",
+                    "detail": "until fragrant, about 30 seconds",
+                    "children": [
+                      {
+                        "op": "cook",
+                        "detail": "stirring occasionally, until lightly golden, about 7 minutes",
+                        "children": [
+                          {
+                            "op": "heat",
+                            "detail": "over medium heat until shimmering",
+                            "children": [
+                              {
+                                "item": "2 tablespoons (30 ml) extra-virgin olive oil",
+                                "note": "for the soup",
+                                "name": "extra-virgin olive oil",
+                                "amount": 2, "unit": "tablespoons",
+                                "metric": 30, "metric_unit": "ml"
+                              }
+                            ]
+                          },
+                          {
+                            "item": "1 large yellow onion (10 ounces; 284 g), finely chopped",
+                            "name": "yellow onion",
+                            "amount": 1, "unit": "large",
+                            "metric": 284, "metric_unit": "g"
+                          }
+                        ]
+                      },
+                      { "item": "2 teaspoons ground cumin", "name": "ground cumin", "amount": 2, "unit": "teaspoons" },
+                      { "item": "1 teaspoon freshly ground black pepper", "name": "freshly ground black pepper", "amount": 1, "unit": "teaspoon" }
+                    ]
+                  },
+                  { "item": "10 ounces yellow potatoes (284 g; about 3 small potatoes), peeled and chopped", "name": "yellow potatoes", "amount": 10, "unit": "ounces", "metric": 284, "metric_unit": "g" },
+                  { "item": "1 cup dried red lentils (7 ounces; 200 g), picked over and rinsed", "name": "dried red lentils", "amount": 1, "unit": "cup", "metric": 200, "metric_unit": "g" },
+                  { "item": "6 ounces carrots (170 g; about 2 medium carrots), peeled and chopped", "name": "carrots", "amount": 6, "unit": "ounces", "metric": 170, "metric_unit": "g" },
+                  { "item": "4 cups (960 ml) homemade or store-bought unsalted chicken or vegetable stock (see notes)", "name": "homemade or store-bought unsalted chicken or vegetable stock", "amount": 4, "unit": "cups", "metric": 960, "metric_unit": "ml" },
+                  { "item": "3 teaspoons Diamond Crystal kosher salt; for table salt, use half as much by volume or the same weight", "name": "Diamond Crystal kosher salt", "amount": 3, "unit": "teaspoons" }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "pita chips",
+      "prep": ["Line a large plate with paper towels."],
+      "finish": [],
+      "tree": {
+        "op": "season",
+        "detail": "immediately after transferring, with salt to taste",
+        "children": [
+          {
+            "op": "fry",
+            "detail": "working in two batches, stirring and flipping often, until golden, 2 to 3 minutes — take care not to let them darken",
+            "children": [
+              {
+                "op": "heat",
+                "detail": "about 1/4 inch olive oil in a large stainless steel skillet over medium-high heat until shimmering",
+                "children": [
+                  { "item": "Olive oil", "note": "for frying" }
+                ]
+              },
+              { "item": "2 pita rounds, cut into 3/4-inch squares", "name": "pita rounds", "amount": 2, "unit": "rounds" }
+            ]
+          },
+          { "item": "Kosher salt", "note": "for the pita chips" }
+        ]
+      }
+    },
+    {
+      "name": "assembly",
+      "prep": [],
+      "finish": [],
+      "tree": {
+        "op": "serve",
+        "detail": "divide between serving bowls and top with parsley and pita chips, if using",
+        "children": [
+          { "item": "blended soup", "from": "soup" },
+          { "item": "Chopped parsley", "note": "for serving" },
+          { "item": "pita chips", "from": "pita chips" },
+          { "item": "Large lemon wedges", "note": "for serving" }
+        ]
+      }
+    }
+  ]
+}

@@ -83,6 +83,12 @@ Validation failures are still fed back once as a repair prompt, so **error strin
 prompts** — they must name what is wrong and state the remedy. `tests/pipeline.mjs`
 asserts that wording.
 
+Valid is not the same as complete: a model once wrote "cook until golden" and never
+wrote the onion. When the page has structured data, `missingIngredients()` diffs the
+source's ingredient list against the returned tree by word overlap, and a gap gets
+one repair round (a warning in the log if it survives it — an incomplete table still
+renders). Shape reconsideration is rejected if it would drop coverage.
+
 Three asks, in descending ambition — the whole point is that a weak model still
 produces something:
 

@@ -13,11 +13,14 @@ import {
   buildTree,
   salvage,
   inspect,
+  missingIngredients,
+  countIngredients,
   fromSimple,
   SIMPLE_SCHEMA,
 } from "../extension/shared/schema.js";
 import { renderArticle } from "../extension/shared/layout.js";
 import { parseJsonLoosely } from "../extension/shared/providers.js";
+import { buildCoveragePrompt } from "../extension/shared/prompt.js";
 import { ALL_SCENES, sceneFor } from "../extension/shared/kitchen.js";
 import { RECIPE_SCHEMA as NESTED_SCHEMA } from "../extension/shared/schema.js";
 
@@ -505,6 +508,7 @@ check(
   JSON.stringify(inspect(cake)),
 );
 check("the brownies are clean too", inspect(JSON.parse(readFileSync(new URL("../recipes/espresso-brownies.json", import.meta.url)))).length === 0);
+check("the shorabet chain is clean too", inspect(JSON.parse(readFileSync(new URL("../recipes/shorabet-adas.json", import.meta.url)))).length === 0);
 
 // ------------------------------------------------------------------ simple mode
 //
@@ -557,6 +561,142 @@ check(
 const oneStep = fromSimple({ title: "Toast", steps: [{ op: "toast", detail: "2 min", adds: [ing("bread")] }] });
 check("a one-step recipe works", validateRecipe(oneStep).ok);
 check("a recipe with no steps yields no sections", fromSimple({ title: "x", steps: [] }).sections.length === 0);
+
+// ------------------------------------------------------------------ coverage
+//
+// The shorabet adas failure: the model wrote "cook, stirring occasionally,
+// until lightly golden, about 7 minutes" and never wrote the onion it cooks.
+// The tree was structurally valid, so nothing complained — the fix is to check
+// the source's own ingredient list against what came back.
+
+const SHORABET_INGREDIENTS = [
+  "2 tablespoons (30 ml) extra-virgin olive oil",
+  "1 large yellow onion (10 ounces; 284 g), finely chopped",
+  "2 teaspoons ground cumin",
+  "1 teaspoon freshly ground black pepper",
+  "10 ounces yellow potatoes (284 g; about 3 small potatoes), peeled and chopped",
+  "1 cup dried red lentils (7 ounces; 200 g), picked over and rinsed",
+  "6 ounces carrots (170 g; about 2 medium carrots), peeled and chopped",
+  "4 cups (960 ml) homemade or store-bought unsalted chicken or vegetable stock (see notes)",
+  "3 teaspoons Diamond Crystal kosher salt; for table salt, use half as much by volume or the same weight",
+  "Large lemon wedges, for serving (see notes)",
+  "Chopped parsley, for serving",
+  "2 pita rounds, cut into 3/4-inch squares",
+  "Olive oil, for frying",
+  "Kosher salt",
+];
+
+// What the model actually returned for that page: a valid three-section tree,
+// minus the onion — its cook step attached to the oil alone.
+const onionDropped = {
+  title: "Shorabet Adas (Lentil Soup)",
+  sections: [
+    {
+      name: "soup", prep: [], finish: [],
+      tree: op("blend", [
+        op("simmer", [
+          op("stir in", [
+            op("cook", [
+              op("cook", [op("heat", [ing("2 tablespoons (30 ml) extra-virgin olive oil")])]),
+              ing("2 teaspoons ground cumin"),
+              ing("1 teaspoon freshly ground black pepper"),
+            ]),
+            ing("10 ounces yellow potatoes (284 g; about 3 small potatoes), peeled and chopped"),
+            ing("1 cup dried red lentils (7 ounces; 200 g), picked over and rinsed"),
+            ing("6 ounces carrots (170 g; about 2 medium carrots), peeled and chopped"),
+            ing("4 cups (960 ml) homemade or store-bought unsalted chicken or vegetable stock (see notes)"),
+            ing("3 teaspoons Diamond Crystal kosher salt; for table salt, use half as much by volume or the same weight"),
+          ]),
+        ]),
+      ]),
+    },
+    {
+      name: "pita chips", prep: ["Line a large plate with paper towels."], finish: [],
+      tree: op("season", [
+        op("fry", [
+          ing("2 pita rounds, cut into 3/4-inch squares"),
+          ing("Olive oil, for frying", "for frying"),
+        ]),
+        ing("Kosher salt", "for the pita chips"),
+      ]),
+    },
+    {
+      name: "assembly", prep: [], finish: [],
+      tree: op("serve", [
+        ing("blended soup", "from soup"),
+        ing("Chopped parsley, for serving"),
+        ing("pita chips", "from pita chips"),
+        ing("Large lemon wedges, for serving (see notes)"),
+      ]),
+    },
+  ],
+};
+const dropped = missingIngredients(onionDropped, SHORABET_INGREDIENTS);
+check("a dropped onion is caught, and only the onion", dropped.length === 1 && /onion/.test(dropped[0]), JSON.stringify(dropped));
+check("the tree that dropped it is otherwise valid", validateRecipe(onionDropped).ok);
+
+// The repaired tree — the onion written inside the cook step that consumes it,
+// shortened the way a model would write it.
+const onionBack = structuredClone(onionDropped);
+const soupCook = onionBack.sections[0].tree.children[0].children[0].children[0].children[0];
+soupCook.children.splice(1, 0, ing("yellow onion, finely chopped"));
+check(
+  "a reworded, shortened ingredient still counts as covered",
+  missingIngredients(onionBack, SHORABET_INGREDIENTS).length === 0,
+  JSON.stringify(missingIngredients(onionBack, SHORABET_INGREDIENTS)),
+);
+
+// Quantity-only rewording must not fool it, and a second use of an ingredient is
+// covered by one mention.
+const verbatim = {
+  title: "x",
+  sections: [
+    {
+      name: "", prep: [], finish: [],
+      tree: op("fry", [
+        ing("2 tablespoons (30 ml) extra-virgin olive oil"),
+        ing("Olive oil, for frying", "for frying"),
+      ]),
+    },
+  ],
+};
+check(
+  "an ingredient used twice is covered by one mention",
+  missingIngredients(verbatim, SHORABET_INGREDIENTS).every((l) => !/olive oil/i.test(l)),
+  JSON.stringify(missingIngredients(verbatim, SHORABET_INGREDIENTS)),
+);
+
+check("no source list means nothing to check", missingIngredients(onionDropped, []).length === 0);
+check(
+  "the ingredient count walks the tree, not a field the model never fills",
+  countIngredients(onionDropped) === 15 && countIngredients(onionBack) === 16,
+  `${countIngredients(onionDropped)} then ${countIngredients(onionBack)}`,
+);
+
+// The coverage repair prompt must name what is missing and state the remedy.
+const coverPrompt = buildCoveragePrompt(onionDropped, dropped);
+check(
+  "the coverage prompt names the missing ingredient",
+  coverPrompt.includes("1 large yellow onion (10 ounces; 284 g), finely chopped"),
+  coverPrompt.slice(0, 200),
+);
+check(
+  "the coverage prompt says to add it where it is used and change nothing else",
+  /added.*verbatim.*operation[\s\S]*Change nothing else/s.test(coverPrompt),
+  coverPrompt.slice(-400),
+);
+
+// The simple-mode shape reaches the same check: an ingredient absent from every
+// step's adds is caught there too.
+const simpleDropped = fromSimple({
+  title: "Shorabet Adas (Lentil Soup)",
+  steps: [
+    { op: "heat", detail: "", adds: [ing("2 tablespoons (30 ml) extra-virgin olive oil")] },
+    { op: "cook", detail: "until lightly golden, about 7 minutes", adds: [] },
+  ],
+});
+const simpleMissing = missingIngredients(simpleDropped, SHORABET_INGREDIENTS.slice(0, 2));
+check("the flat-list shape is checked the same way", simpleMissing.length === 1 && /onion/.test(simpleMissing[0]), JSON.stringify(simpleMissing));
 
 // ----------------------------------------------------------- the ascii kitchen
 

@@ -76,7 +76,9 @@ Work only from the recipe given to you.`;
 export function buildSimplePrompt(extraction) {
   return buildUserPrompt(extraction).replace(
     /Convert it into the recipe table JSON\..*$/s,
-    "List the steps in order, with the ingredients that join at each one.",
+    "List the steps in order, with the ingredients that join at each one. Before returning, " +
+      "check every ingredient listed above joins at some step — dropping one is the most " +
+      "common mistake there is.",
   );
 }
 
@@ -113,7 +115,8 @@ export function buildUserPrompt(extraction) {
   parts.push(
     "",
     "Convert it into the recipe table JSON. Work out the last operation first, then what fed it, " +
-      "and nest inwards until you reach the ingredients.",
+      "and nest inwards until you reach the ingredients. Before returning, check every ingredient " +
+      "listed above appears in the tree — dropping one is the most common mistake there is.",
   );
   return parts.join("\n");
 }
@@ -155,5 +158,27 @@ export function buildRepairPrompt(previous, errors) {
       "the structure. Remember that a section's \"tree\" is its final operation, that every " +
       "operation needs at least one child, and that each ingredient is written inside the " +
       "operation that consumes it.",
+  ].join("\n");
+}
+
+/**
+ * The tree was valid, but the source lists an ingredient that never appeared in
+ * it — the model wrote the step ("cook until golden") without the ingredient
+ * (the onion). One round to add it back without disturbing anything else.
+ */
+export function buildCoveragePrompt(previous, missing) {
+  return [
+    "The source lists ingredient(s) that never appear anywhere in what you returned:",
+    "",
+    ...missing.map((line) => `- ${line}`),
+    "",
+    "Here is what you returned:",
+    "",
+    JSON.stringify(previous),
+    "",
+    'Return the same JSON with every one of those ingredients added — quantity copied ' +
+      'verbatim, written inside the operation (or a step\'s "adds") that consumes it. Prep the ' +
+      "ingredient names, like chopping or soaking, belongs in that operation's detail, not in a " +
+      "separate step. Change nothing else — same operations, same order, same quantities.",
   ].join("\n");
 }

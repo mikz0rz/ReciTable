@@ -11,6 +11,8 @@ import {
   buildTree,
   salvage,
   inspect,
+  missingIngredients,
+  countIngredients,
   fromSimple,
   SIMPLE_SCHEMA,
 } from "./shared/schema.js";
@@ -21,6 +23,7 @@ import {
   buildSimplePrompt,
   buildRepairPrompt,
   buildReshapePrompt,
+  buildCoveragePrompt,
 } from "./shared/prompt.js";
 
 const RUN_KEY = "run";
@@ -247,6 +250,7 @@ async function askModel(run, settings, extraction, signal) {
     { role: "user", content: buildUserPrompt(extraction) },
   ];
   const remembered = settings.formatModes[`${settings.provider}:${settings.model}`];
+  let usedSimple = false; // whether the current recipe came from the flat-list ask
 
   const step = begin(run, "model", `Ask ${settings.model}`);
   update(run, step, "waiting for the first bytes");
@@ -276,10 +280,7 @@ async function askModel(run, settings, extraction, signal) {
 
   if (result.ok) {
     const sections = (recipe.sections || []).length;
-    const ingredients = (recipe.sections || []).reduce(
-      (n, s) => n + (s.ingredients || []).length,
-      0,
-    );
+    const ingredients = countIngredients(recipe);
     settle(run, check, `${ingredients} ingredients · ${sections} section(s)`);
   } else {
     settle(
@@ -315,6 +316,7 @@ async function askModel(run, settings, extraction, signal) {
   if (!result.ok) {
     // The nested shape is beyond this model. Ask for something with no structure
     // to get wrong — a flat list of steps — and chain it into a tree here.
+    usedSimple = true;
     const plain = begin(run, "simple", "Ask again, more simply");
     update(run, plain, "a flat list of steps instead of a tree");
     const simple = await complete(
@@ -347,6 +349,63 @@ async function askModel(run, settings, extraction, signal) {
     throw new Error("That page does not look like a recipe.");
   }
 
+  // Content check, before the shape check: a valid tree can still quietly omit
+  // an ingredient — the model wrote "cook until golden" and never wrote the
+  // onion. With the page's structured list a silent drop is checkable, so give
+  // the model one round to add it back; failing that, render what we have and
+  // say what is missing rather than fail a run that produced a usable table.
+  const sourceIngredients = extraction.structured?.ingredients || [];
+  if (sourceIngredients.length) {
+    const shorten = (line) => (line.length > 60 ? `${line.slice(0, 60)}…` : line);
+    const missing = missingIngredients(recipe, sourceIngredients);
+    if (missing.length) {
+      const cover = begin(run, "cover", "Check every ingredient");
+      const named = missing.map(shorten);
+      update(run, cover, `${missing.length} missing — asking for it back`);
+      const base = usedSimple
+        ? [
+            { role: "system", content: SIMPLE_SYSTEM_PROMPT },
+            { role: "user", content: buildSimplePrompt(extraction) },
+          ]
+        : messages;
+      try {
+        const again = await complete(
+          settings,
+          [
+            ...base,
+            { role: "assistant", content: JSON.stringify(recipe) },
+            { role: "user", content: buildCoveragePrompt(recipe, missing) },
+          ],
+          {
+            startMode: first.mode,
+            stream: first.streamed,
+            signal,
+            ...(usedSimple ? { schema: SIMPLE_SCHEMA } : {}),
+            onProgress: reporter(run, cover),
+          },
+        );
+        const candidate = salvage(again.data).recipe;
+        const still = missingIngredients(candidate, sourceIngredients);
+        if (validateRecipe(candidate).ok && still.length < missing.length) {
+          recipe = candidate;
+          settle(
+            run,
+            cover,
+            still.length
+              ? `added some — still missing: ${still.map(shorten).join("; ")}`
+              : `added ${missing.length} missing ingredient${missing.length === 1 ? "" : "s"} back`,
+            still.length ? "warn" : "ok",
+          );
+        } else {
+          settle(run, cover, `could not add: ${named.join("; ")}`, "warn");
+        }
+      } catch (err) {
+        // A failed coverage round must not lose a recipe that already validates.
+        settle(run, cover, `kept the first answer (${err.message}) — not in the table: ${named.join("; ")}`, "warn");
+      }
+    }
+  }
+
   // The shape is legal but may still read as nonsense — most often a chain of
   // steps in one pan flattened into operations side by side. Ask once, keep the
   // better answer, and never fail over it.
@@ -366,7 +425,11 @@ async function askModel(run, settings, extraction, signal) {
       );
       const candidate = salvage(again.data).recipe;
       const candidateSmells = inspect(candidate);
-      if (validateRecipe(candidate).ok && candidateSmells.length < smells.length) {
+      // A reconsideration must not lose ingredients the earlier answer had.
+      const drops = Boolean(sourceIngredients.length) &&
+        missingIngredients(candidate, sourceIngredients).length >
+          missingIngredients(recipe, sourceIngredients).length;
+      if (validateRecipe(candidate).ok && candidateSmells.length < smells.length && !drops) {
         recipe = candidate;
         settle(run, think, `nested ${smells.length - candidateSmells.length} chain(s)`);
       } else {
