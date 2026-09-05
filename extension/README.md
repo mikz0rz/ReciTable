@@ -11,6 +11,24 @@ the left, each operation a cell spanning the rows it consumes.
 3. Pick a provider, paste a key, press **Load models**, choose one, **Save**.
    **Test** confirms the key works and reports how well that model handles JSON.
 
+## Updating
+
+Pull and reload — Chrome does not watch the files:
+
+```
+git pull                     # or: git checkout v0.2.0 for a tagged release
+```
+
+Then `chrome://extensions` → ReciTable → the **↻** icon. The card shows the
+version, and **Copy diagnostics** reports it too.
+
+**Update in place.** An unpacked extension's identity is a hash of its folder
+path: re-downloading into a different folder and loading that one gives a fresh
+extension with an empty storage — API key and settings gone. The same applies
+to a ZIP of a release: replace the contents of the existing folder instead.
+Nothing auto-updates an unpacked extension; the Chrome Web Store is the route
+if you ever want that.
+
 ## The flow
 
 Click the toolbar icon on any recipe page and press **Convert this recipe**. Then:
