@@ -108,8 +108,15 @@ those to time each step.
   pan, and resting the dough go in `prep`; dividing between pans, cooling,
   cutting, and doneness cues go in `finish`; storage goes in `notes`. If a step
   from the source lands in none of these, you dropped it — find it a home.
-- **Children read top to bottom in listed order.** When one child is the base
-  the rest get added to, list it first so the flow reads downward.
+- **Children read top to bottom in listed order, and that order is the cooking
+  order.** The tree's post-order is the sequence a cook follows, so list children
+  in the order the source performs them — never in the order the step that
+  combines them names them. A component seared and set aside before the sauce is
+  built is written before the sauce branch, even though the sauce is what it
+  rejoins later; written the other way round, the stages tell the cook to add the
+  mango before the chicken is seared. Only when the source gives no order between
+  two children — made at once, then brought together — put the base the rest are
+  added to first.
 - **Consecutive steps in the same pan nest; they are not siblings.** Two
   operations share a parent only when they happened in separate vessels and are
   being brought together (the cake's whisked dry mix meeting its beaten eggs).

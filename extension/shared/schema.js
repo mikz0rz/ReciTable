@@ -106,9 +106,10 @@ function operation(depth, top = false) {
         ...(top
           ? {
               description:
-                "What this operation combines, in the order the rows should read top to " +
-                "bottom: ingredients, and earlier operations whose result goes in here. " +
-                "Never empty.",
+                "What this operation combines, in the order the source performs them and " +
+                "the rows should then read top to bottom: ingredients, and earlier " +
+                "operations whose result goes in here. A component set aside and returned " +
+                "later comes before the branch it rejoins. Never empty.",
             }
           : {}),
         items: child,

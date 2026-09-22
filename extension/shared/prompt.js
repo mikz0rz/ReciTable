@@ -18,7 +18,7 @@ Rules:
 
 3. An ingredient used at more than one stage appears once per use, each inside the operation that uses it, each carrying the amount used at that point and a "note" saying which use it is ("for searing", "for the sauce"). If the source gives only a combined amount, put the combined figure in the first one with the note "divided", and write the later ones as the ingredient name alone with a note naming the use — never guess how the total splits.
 
-4. Something set aside and returned later is nested inside the operation where it goes BACK IN. Sear the chicken, soften onions, build a sauce, return the chicken: "return" is the outer operation, and both "sear" and the sauce-building operation are its children. Never repeat an operation in two places.
+4. Something set aside and returned later is nested inside the operation where it goes BACK IN. Sear the chicken, soften onions, build a sauce, return the chicken: "return" is the outer operation, and both "sear" and the sauce-building operation are its children — but write "sear" FIRST, because it happened first. The branches of a fork are read in the order you write them. Never repeat an operation in two places.
 
 5. Name each operation with one or two lowercase words — mix, fold in, whisk, beat, melt, sear, simmer, knead, bake. Temperature, time, speed and the visual cue go in "detail", never in the name. Include a duration whenever the source gives one; the page runs a timer for each step from it.
 
@@ -32,7 +32,7 @@ If you find yourself giving one operation three or four operation children, you 
 
 6. An operation with a single child is normal and correct: melting butter on its own, sifting flour on its own.
 
-7. Order "children" the way the rows should read top to bottom. When one child is the base the rest are added to, put it first.
+7. Order "children" the way the rows should read top to bottom, and that order IS the cooking order — the tree's post-order is the sequence a cook works in, one numbered stage per operation. List them in the order the source performs them, never in the order the step that combines them happens to name them. Only when the source gives no order between two children — two things made at once and then brought together — put the base the rest are added to first.
 
 8. Steps that combine nothing are NOT operations. Preheating, greasing a pan, and resting go in "prep". Dividing between pans, cooling, cutting, and doneness cues go in "finish". Storage and substitutions go in "notes". Every instruction from the source must land in an operation, prep, finish, or notes — if one lands nowhere, you dropped it.
 

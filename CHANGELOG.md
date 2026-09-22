@@ -5,6 +5,17 @@ the renderer's markup bumps major, features bump minor, fixes bump patch. Each
 release is tagged in git (`v0.2.0`) so `git diff v0.1.0..v0.2.0` shows exactly
 what moved, and `git checkout v0.1.0` gets the old state back.
 
+## 0.2.1 — 2026-09-22
+
+- Branch order in the tree is now cooking order. Rule 7 said "put the base
+  first", which for anything seared and set aside before a sauce is built wrote
+  the sauce branch first — the mango chicken came out with `season`/`sear` as
+  stages 5 and 6, after "add the mango and stock", so cook mode told the cook to
+  add the mango before the chicken was seared. Children are now listed in the
+  order the source performs them; "base first" survives only as a tiebreak for
+  children the source doesn't order. The fork itself is unchanged — the seared
+  chicken is still a branch of "return", written first now instead of last.
+
 ## 0.2.0 — 2026-09-05
 
 - Nexos is the predefined provider, first in line: OpenAI-compatible at
