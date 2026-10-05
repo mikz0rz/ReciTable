@@ -189,7 +189,10 @@ export const RECIPE_SCHEMA = {
           },
           prep: {
             type: "array",
-            description: "Setup that combines nothing: preheating, greasing a pan, resting dough.",
+            description:
+              "Setup that adds NO ingredient: preheating, greasing a pan, resting dough. Never a " +
+              'step that puts ingredients into a vessel, however the source words it — "prep the veg ' +
+              'and add them to the dish" is an operation, and its ingredients are its children.',
             items: { type: "string" },
           },
           finish: {
@@ -234,7 +237,9 @@ export const SIMPLE_SCHEMA = {
     credit: { type: "string", description: "Attribution. \"\" if none." },
     prep: {
       type: "array",
-      description: "Setup that combines nothing: preheating, greasing a pan.",
+      description:
+        "Setup that adds NO ingredient: preheating, greasing a pan. Never a step that puts " +
+        "ingredients into a vessel — that is a step.",
       items: { type: "string" },
     },
     finish: {
@@ -531,13 +536,52 @@ function fanIn(node, where, smells) {
   for (const child of node.children) fanIn(child, where, smells);
 }
 
+/** Distinctive words of an ingredient's name. Unquantified ingredients ("Kosher
+ *  salt") carry no "name", so the "item" stands in for them. */
+function ingredientWords(node, out) {
+  if (isIngredient(node)) {
+    for (const word of coverTokens(node.name || node.item || "")) out.add(word);
+    return;
+  }
+  for (const child of node.children || []) ingredientWords(child, out);
+}
+
+/**
+ * An operation whose detail names an ingredient that lies outside its own
+ * subtree. "Transfer … along with the broth" on a cell that does not hold the
+ * broth is the table contradicting its own text: the broth is drawn joining a
+ * later step than the one that adds it, which reads as a step out of sequence.
+ * That is a different failure from a fan — one misplaced leaf rather than a
+ * flattened chain — but it earns the same single reconsideration.
+ */
+function strayMention(node, where, all, smells) {
+  if (!node || typeof node !== "object" || !Array.isArray(node.children)) return;
+  const here = new Set();
+  ingredientWords(node, here);
+  const named = [...new Set(coverTokens(node.detail || ""))].filter(
+    (word) => all.has(word) && !here.has(word),
+  );
+  if (named.length) {
+    smells.push(
+      `${where}: the detail of "${node.op}" mentions ${named.map((w) => `"${w}"`).join(", ")}, ` +
+        `but no ingredient by that name sits inside "${node.op}". An ingredient belongs in the ` +
+        `operation whose detail adds it — move it inside "${node.op}", out of the later step it ` +
+        "was written in.",
+    );
+  }
+  for (const child of node.children) strayMention(child, where, all, smells);
+}
+
 /** Legal but suspect shapes, for one reconsideration round. */
 export function inspect(recipe) {
   const smells = [];
   for (const [i, section] of (recipe.sections || []).entries()) {
     if (!section?.tree) continue;
     const where = section.name ? `section "${section.name}"` : `section ${i + 1}`;
+    const all = new Set();
+    ingredientWords(section.tree, all);
     fanIn(section.tree, where, smells);
+    strayMention(section.tree, where, all, smells);
   }
   return smells;
 }

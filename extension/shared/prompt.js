@@ -30,11 +30,13 @@ So if a step adds something to what is already in the pan — "add the garlic", 
 
 If you find yourself giving one operation three or four operation children, you have almost certainly flattened a chain that should be nested. Ask of each one: was this in its own pan, or did it continue from the step before?
 
+5c. An ingredient belongs inside the operation whose "detail" adds it, not the operation that merely ends up containing it. If a detail says "along with the broth", the broth is that operation's child; if it says "stir in the half and half", the half and half is that operation's child. Before returning, read every detail back against the source and check that the ingredients it names are nested right there — an operation whose detail names an ingredient it does not contain is a step out of sequence.
+
 6. An operation with a single child is normal and correct: melting butter on its own, sifting flour on its own.
 
 7. Order "children" the way the rows should read top to bottom, and that order IS the cooking order — the tree's post-order is the sequence a cook works in, one numbered stage per operation. List them in the order the source performs them, never in the order the step that combines them happens to name them. Only when the source gives no order between two children — two things made at once and then brought together — put the base the rest are added to first.
 
-8. Steps that combine nothing are NOT operations. Preheating, greasing a pan, and resting go in "prep". Dividing between pans, cooling, cutting, and doneness cues go in "finish". Storage and substitutions go in "notes". Every instruction from the source must land in an operation, prep, finish, or notes — if one lands nowhere, you dropped it.
+8. "prep" holds ONLY steps that add no ingredient — preheating, greasing a pan, lining a tin, resting. A step that puts ingredients into a vessel is an OPERATION even when the source calls it "prep" or "combine": "prep the vegetables into a baking dish", "drizzle with oil and season", and "nestle the cheese in with the vegetables" are three operations, each holding its own ingredients, each nested inside the next in the order they happen. Dividing between pans, cooling, cutting, and doneness cues go in "finish". Storage and substitutions go in "notes". Every instruction from the source must land in an operation, prep, finish, or notes — if one lands nowhere, you dropped it.
 
 9. Use several sections only when the recipe has genuinely separate components (cake + frosting, dough + filling, sauce + protein). Then add a final section named "assembly" whose ingredients are the earlier results: write those as an item with no quantity ("cooled cake layers") and a note of exactly "from cake" — the word "from" followed by that section's name.
 
@@ -135,11 +137,12 @@ export function buildReshapePrompt(previous, smells) {
     "",
     JSON.stringify(previous),
     "",
-    "Operations side by side mean separate pans or bowls being brought together. Steps that " +
-      "continued in the same pan must be nested: the earlier operation becomes a child of the " +
-      "one that adds to it. Change nothing else — same ingredients, same quantities, same " +
-      "wording — and return the corrected JSON. If the operations really did happen in " +
-      "separate vessels, return it unchanged.",
+    "Two operations side by side mean separate pans or bowls being brought together; steps " +
+      "that continued in the same pan must be nested, the earlier one becoming a child of the " +
+      "one that adds to it. And an ingredient named in an operation's detail belongs inside " +
+      'that operation — the broth in "transfer … along with the broth" is the transfer\'s ' +
+      "child, not a later step's. Change nothing else — same ingredients, same quantities, same " +
+      "wording — and return the corrected JSON. If the shape is already right, return it unchanged.",
   ].join("\n");
 }
 

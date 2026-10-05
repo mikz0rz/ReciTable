@@ -406,13 +406,14 @@ async function askModel(run, settings, extraction, signal) {
     }
   }
 
-  // The shape is legal but may still read as nonsense — most often a chain of
-  // steps in one pan flattened into operations side by side. Ask once, keep the
-  // better answer, and never fail over it.
+  // The shape is legal but may still read as nonsense — a chain of steps in one
+  // pan flattened into siblings, or an ingredient drawn joining a later step than
+  // the one whose text adds it. Ask once, keep the better answer, and never fail
+  // over it.
   const smells = inspect(recipe);
   if (smells.length) {
     const think = begin(run, "shape", "Reconsider the shape");
-    update(run, think, `${smells.length} operation${smells.length === 1 ? "" : "s"} side by side`);
+    update(run, think, `${smells.length} shape problem${smells.length === 1 ? "" : "s"}`);
     try {
       const again = await complete(
         settings,
@@ -431,7 +432,8 @@ async function askModel(run, settings, extraction, signal) {
           missingIngredients(recipe, sourceIngredients).length;
       if (validateRecipe(candidate).ok && candidateSmells.length < smells.length && !drops) {
         recipe = candidate;
-        settle(run, think, `nested ${smells.length - candidateSmells.length} chain(s)`);
+        const fixed = smells.length - candidateSmells.length;
+        settle(run, think, `fixed ${fixed} shape problem${fixed === 1 ? "" : "s"}`);
       } else {
         settle(run, think, "kept the first answer", "warn");
       }

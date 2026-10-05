@@ -20,7 +20,7 @@ import {
 } from "../extension/shared/schema.js";
 import { renderArticle } from "../extension/shared/layout.js";
 import { parseJsonLoosely } from "../extension/shared/providers.js";
-import { buildCoveragePrompt } from "../extension/shared/prompt.js";
+import { buildCoveragePrompt, buildReshapePrompt } from "../extension/shared/prompt.js";
 import { ALL_SCENES, sceneFor } from "../extension/shared/kitchen.js";
 import { RECIPE_SCHEMA as NESTED_SCHEMA } from "../extension/shared/schema.js";
 
@@ -509,6 +509,112 @@ check(
 );
 check("the brownies are clean too", inspect(JSON.parse(readFileSync(new URL("../recipes/espresso-brownies.json", import.meta.url)))).length === 0);
 check("the shorabet chain is clean too", inspect(JSON.parse(readFileSync(new URL("../recipes/shorabet-adas.json", import.meta.url)))).length === 0);
+
+// ------------------------------------------ an ingredient drawn in the wrong step
+//
+// The Boursin squash soup failure: the transfer cell's own detail said "along with
+// the broth", but the broth was written as a child of a later "stir" — so the table
+// drew the broth joining a step after the one that adds it. A fan smell never fires
+// (the tree is a single chain); this is one misplaced leaf, not a flattened one.
+
+const step = (name, detail, children) => ({ op: name, detail, children });
+
+const boursinBad = {
+  title: "Boursin Butternut Squash Soup",
+  sections: [
+    {
+      name: "", prep: [], finish: [],
+      tree: step("serve", "", [
+        step("stir", "", [
+          step("simmer", "Heat over medium heat and bring to a simmer.", [
+            step("blend", "Blend with an immersion blender.", [
+              step("transfer", "Transfer the mixture to a large soup pot along with the broth.", [
+                step("bake", "Cover with foil and bake for 40 minutes.", [
+                  ing('1 small to medium butternut squash (peeled and cut into 1" chunks)'),
+                  ing("1 small yellow onion (cut into chunks)"),
+                  ing('2 carrots (peeled and cut into 1" pieces)'),
+                  ing("6 sage leaves"),
+                  ing("3 cloves garlic (minced)"),
+                  ing("1 wheel Boursin cheese"),
+                  ing("2 tbsp olive oil"),
+                  ing("salt"),
+                  ing("pepper"),
+                ]),
+              ]),
+            ]),
+          ]),
+          ing("4-5 cups vegetable broth"),
+        ]),
+      ]),
+    },
+  ],
+};
+
+const straySmells = inspect(boursinBad);
+check("an ingredient drawn in the wrong step is flagged", straySmells.length === 1, JSON.stringify(straySmells));
+check(
+  "the smell names the operation and the ingredient",
+  /"transfer"/.test(straySmells[0]) && /"broth"/.test(straySmells[0]),
+  straySmells[0],
+);
+check(
+  "the smell says where the ingredient belongs",
+  /move it inside "transfer"/.test(straySmells[0]),
+  straySmells[0],
+);
+check("the misplaced-ingredient shape is still VALID, only suspect", validateRecipe(boursinBad).ok);
+
+// Sequenced correctly — the broth nested inside the transfer whose detail names it,
+// every detail naming its own children — the same recipe has nothing to complain
+// about. This is the shape the prompt rules now ask for.
+const boursinGood = {
+  title: "Boursin Butternut Squash Soup",
+  sections: [
+    {
+      name: "", prep: ["Preheat the oven to 425 degrees F."], finish: ["Serve and enjoy."],
+      tree: step("serve", "", [
+        step("stir in", "the half and half", [
+          step("simmer", "over medium heat, bring to a simmer", [
+            step("blend", "with an immersion blender", [
+              step("transfer", "to a large soup pot along with the broth", [
+                step("bake", "covered with foil, 40 min", [
+                  step("nestle", "the wheel of Boursin in with the vegetables", [
+                    step("toss", "with olive oil, salt and pepper", [
+                      ing('1 small to medium butternut squash (peeled and cut into 1" chunks)'),
+                      ing("1 small yellow onion (cut into chunks)"),
+                      ing('2 carrots (peeled and cut into 1" pieces)'),
+                      ing("6 sage leaves"),
+                      ing("3 cloves garlic (minced)"),
+                      ing("2 tbsp olive oil"),
+                      ing("salt"),
+                      ing("pepper"),
+                    ]),
+                    ing("1 wheel Boursin cheese"),
+                  ]),
+                ]),
+                ing("4-5 cups vegetable broth"),
+              ]),
+            ]),
+          ]),
+          ing("1/3 cup half and half"),
+        ]),
+      ]),
+    },
+  ],
+};
+check(
+  "a correctly sequenced tree is clean — the broth sits inside the transfer that names it",
+  inspect(boursinGood).length === 0,
+  JSON.stringify(inspect(boursinGood)),
+);
+
+// The reshape prompt must cover both remedies, not only the flattened fan.
+const reshape = buildReshapePrompt(boursinBad, straySmells);
+check(
+  "the reshape prompt says a named ingredient belongs inside the operation",
+  /ingredient named in an operation's detail belongs inside that operation/.test(reshape),
+  reshape.slice(-420),
+);
 
 // ------------------------------------------------------------------ simple mode
 //
