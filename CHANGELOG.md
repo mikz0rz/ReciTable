@@ -5,6 +5,27 @@ the renderer's markup bumps major, features bump minor, fixes bump patch. Each
 release is tagged in git (`v0.2.0`) so `git diff v0.1.0..v0.2.0` shows exactly
 what moved, and `git checkout v0.1.0` gets the old state back.
 
+## 0.3.2 — 2026-10-05
+
+- Ingredients are no longer repeated. A third run of the Boursin soup came back
+  with the vegetables under `add`, again under `toss` and again under `bake` —
+  ten lines duplicated, and the half and half gone entirely. The cause was a rule
+  this repo had just written: 0.3.0's rule 8 called those three steps operations
+  "each holding its own ingredients", and its example was literally "nestle the
+  cheese in with the vegetables". A model reading that gives `nestle` the
+  vegetables too. Rule 3 compounded it — "an ingredient used at more than one
+  stage appears once per use" — and the vegetables are arguably used at four.
+- The prompt now states what the tree has always meant: an ingredient goes in
+  ONCE, at the step that first puts it in, and every step nested above reaches it
+  by being nested there (rules 3, 5d and 8). Rule 3's one exception — an
+  ingredient genuinely going into two separate branches — now says "separate
+  branches" explicitly and requires a note on each copy.
+- A fourth smell catches the repeats when the prompt does not: the same `item`
+  appearing twice in a section without a note distinguishing the copies. It names
+  how many times each is listed and says to keep the earlier one. Distinct notes
+  (rule 3's real split) leave it quiet, so the birthday cake and the shorabet
+  adas are unaffected.
+
 ## 0.3.1 — 2026-10-05
 
 - The misplaced-ingredient smell from 0.3.0 was too easy to satisfy. On a re-run

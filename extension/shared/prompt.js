@@ -16,7 +16,7 @@ Rules:
 
 2. Also split each quantity into its parts so the page can rescale it: "name" is the ingredient with the quantity stripped, "amount" and "unit" are the leading quantity ("2 cups (240 g) all-purpose flour" gives name "all-purpose flour", amount 2, unit "cups"), and "metric"/"metric_unit" carry the metric figure ONLY when the source printed one — 240 and "g" here. If the source gives no metric weight, metric is 0. Do not calculate one. "item" stays the authority; the parts must agree with it.
 
-3. An ingredient used at more than one stage appears once per use, each inside the operation that uses it, each carrying the amount used at that point and a "note" saying which use it is ("for searing", "for the sauce"). If the source gives only a combined amount, put the combined figure in the first one with the note "divided", and write the later ones as the ingredient name alone with a note naming the use — never guess how the total splits.
+3. An ingredient is listed ONCE, at the step that first puts it in. Every step nested above that one consumes it by being nested there, so a later step never repeats it: the vegetables you put in the dish are not listed again when you toss them, and not again when you nestle the cheese in with them. The one exception is an ingredient that genuinely goes into two SEPARATE branches — oil for searing the chicken, and oil again for a sauce being built alongside it — which appears once per branch, each copy carrying the amount used at that point and a "note" saying which use it is ("for searing", "for the sauce"). If the source gives only a combined amount, put the combined figure in the first one with the note "divided", and write the later ones as the ingredient name alone with a note naming the use — never guess how the total splits.
 
 4. Something set aside and returned later is nested inside the operation where it goes BACK IN. Sear the chicken, soften onions, build a sauce, return the chicken: "return" is the outer operation, and both "sear" and the sauce-building operation are its children — but write "sear" FIRST, because it happened first. The branches of a fork are read in the order you write them. Never repeat an operation in two places.
 
@@ -32,11 +32,13 @@ If you find yourself giving one operation three or four operation children, you 
 
 5c. An ingredient belongs inside the operation whose "detail" adds it, not the operation that merely ends up containing it. If a detail says "along with the broth", the broth is that operation's child; if it says "stir in the half and half", the half and half is that operation's child. Before returning, read every detail back against the source and check that the ingredients it names are nested right there — an operation whose detail names an ingredient it does not contain is a step out of sequence.
 
+5d. An operation's children are exactly what it consumes: the ingredients it introduces, and the earlier operation whose output it acts on. Nothing else — in particular, never an ingredient that already arrived through one of those children, however plainly the wording refers back to it.
+
 6. An operation with a single child is normal and correct: melting butter on its own, sifting flour on its own.
 
 7. Order "children" the way the rows should read top to bottom, and that order IS the cooking order — the tree's post-order is the sequence a cook works in, one numbered stage per operation. List them in the order the source performs them, never in the order the step that combines them happens to name them. Only when the source gives no order between two children — two things made at once and then brought together — put the base the rest are added to first.
 
-8. "prep" holds ONLY steps that add no ingredient — preheating, greasing a pan, lining a tin, resting. A step that puts ingredients into a vessel is an OPERATION even when the source calls it "prep" or "combine": "prep the vegetables into a baking dish", "drizzle with oil and season", and "nestle the cheese in with the vegetables" are three operations, each holding its own ingredients, each nested inside the next in the order they happen. Dividing between pans, cooling, cutting, and doneness cues go in "finish". Storage and substitutions go in "notes". Every instruction from the source must land in an operation, prep, finish, or notes — if one lands nowhere, you dropped it.
+8. "prep" holds ONLY steps that add no ingredient — preheating, greasing a pan, lining a tin, resting. A step that puts ingredients into a vessel is an OPERATION even when the source calls it "prep" or "combine": "prep the vegetables into a baking dish" is an operation holding the vegetables; "drizzle with oil and season" is nested inside it, holding the oil, salt and pepper; "nestle the cheese in with the vegetables" is nested inside that, holding the cheese. The vegetables are listed once, in the first of the three — the later two reach them by nesting, not by listing them again, however plainly their wording refers back to them. Dividing between pans, cooling, cutting, and doneness cues go in "finish". Storage and substitutions go in "notes". Every instruction from the source must land in an operation, prep, finish, or notes — if one lands nowhere, you dropped it.
 
 9. Use several sections only when the recipe has genuinely separate components (cake + frosting, dough + filling, sauce + protein). Then add a final section named "assembly" whose ingredients are the earlier results: write those as an item with no quantity ("cooled cake layers") and a note of exactly "from cake" — the word "from" followed by that section's name.
 
@@ -63,7 +65,7 @@ Rules:
 
 1. Every ingredient in the source joins at exactly one step, in the "adds" list of the step that first uses it. Copy the quantity verbatim into "item", keeping both unit systems. Also give "name" (the ingredient with the quantity stripped), "amount" and "unit" for the leading quantity, and "metric"/"metric_unit" ONLY if the source printed a metric figure — otherwise 0 and "". Never convert or invent a quantity.
 
-2. An ingredient used at two stages appears in both steps' "adds", each with the amount used there and a "note" saying which use it is.
+2. An ingredient joins at the FIRST step that uses it and at no later one — each step continues from the one before it, so it already has it. Only an ingredient that genuinely goes into two separate branches appears in both steps' "adds", each with the amount used there and a "note" saying which use it is.
 
 3. Name each step with one or two lowercase words: whisk, beat, fold in, sear, simmer, bake. Temperature, time, speed and the visual cue go in "detail" — include a duration whenever the source gives one. A step that only acts on what is already there, like baking, has an empty "adds".
 
@@ -139,10 +141,13 @@ export function buildReshapePrompt(previous, smells) {
     "",
     "Two operations side by side mean separate pans or bowls being brought together; steps " +
       "that continued in the same pan must be nested, the earlier one becoming a child of the " +
-      "one that adds to it. And an ingredient named in an operation's detail belongs inside " +
+      "one that adds to it. An ingredient named in an operation's detail belongs inside " +
       'that operation — the broth in "transfer … along with the broth" is the transfer\'s ' +
-      "child, not a later step's. Change nothing else — same ingredients, same quantities, same " +
-      "wording — and return the corrected JSON. If the shape is already right, return it unchanged.",
+      "child, not a later step's. And an ingredient is listed ONCE, at the step that first " +
+      "puts it in: if the same line appears twice, keep the copy in the earlier step and delete " +
+      "the other, because the steps above reach it through the nesting. Change nothing else — no " +
+      "ingredient added or lost, no quantity changed, no wording changed — and return the " +
+      "corrected JSON. If the shape is already right, return it unchanged.",
   ].join("\n");
 }
 

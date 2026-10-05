@@ -20,7 +20,12 @@ import {
 } from "../extension/shared/schema.js";
 import { renderArticle } from "../extension/shared/layout.js";
 import { parseJsonLoosely } from "../extension/shared/providers.js";
-import { buildCoveragePrompt, buildReshapePrompt } from "../extension/shared/prompt.js";
+import {
+  buildCoveragePrompt,
+  buildReshapePrompt,
+  SYSTEM_PROMPT,
+  SIMPLE_SYSTEM_PROMPT,
+} from "../extension/shared/prompt.js";
 import { ALL_SCENES, sceneFor } from "../extension/shared/kitchen.js";
 import { RECIPE_SCHEMA as NESTED_SCHEMA } from "../extension/shared/schema.js";
 
@@ -638,6 +643,120 @@ check(
   "the reshape prompt says a named ingredient belongs inside the operation",
   /ingredient named in an operation's detail belongs inside that operation/.test(reshape),
   reshape.slice(-420),
+);
+
+// A third shape, and the worst of them: the model "gives each operation its own
+// ingredients" by repeating them. The Boursin soup came back on a later run with
+// the vegetables under "add", again under "toss" and again under "bake", and the
+// half and half gone entirely. Nothing here is illegal — it is a tree — so only a
+// smell can catch it.
+const duplicated = {
+  title: "Boursin Butternut Squash Soup",
+  sections: [
+    {
+      tree: step("serve", "Serve and enjoy.", [
+        step("stir in", "", [
+          step("simmer", "Heat over medium heat and bring to a simmer.", [
+            step("blend", "Blend with an immersion blender.", [
+              step("transfer", "Transfer the mixture to a large soup pot along with the broth.", [
+                step("bake", "Cover with foil and bake for 40 minutes.", [
+                  ing("1 small to medium butternut squash"), ing("1 small yellow onion"),
+                  ing("2 carrots"), ing("6 sage leaves"), ing("3 cloves garlic"),
+                  ing("2 tbsp olive oil"), ing("salt"), ing("pepper"),
+                  ing("1 wheel Boursin cheese"), ing("4-5 cups vegetable broth"),
+                ]),
+              ]),
+              step("nestle", "Nestle the wheel of Boursin in with the vegetables.", [
+                step("toss", "Drizzle with olive oil, season with salt and pepper, and toss to combine.", [
+                  ing("2 tbsp olive oil"), ing("salt"), ing("pepper"),
+                  ing("1 small to medium butternut squash"), ing("1 small yellow onion"),
+                  ing("2 carrots"), ing("6 sage leaves"), ing("3 cloves garlic"),
+                ]),
+                step("add", `Prep your veggies and garlic, and add them to a 9x13" baking dish.`, [
+                  ing("1 small to medium butternut squash"), ing("1 small yellow onion"),
+                  ing("2 carrots"), ing("6 sage leaves"), ing("3 cloves garlic"),
+                ]),
+              ]),
+              ing("1 wheel Boursin cheese"),
+            ]),
+          ]),
+          ing("4-5 cups vegetable broth"),
+        ]),
+      ]),
+    },
+  ],
+};
+const dupeSmells = inspect(duplicated);
+check(
+  "a repeated ingredient is flagged",
+  dupeSmells.some((s) => /listed more than once/.test(s)),
+  JSON.stringify(dupeSmells),
+);
+check(
+  "the smell counts the repeats and names the worst",
+  /"1 small to medium butternut squash" ×3/.test(dupeSmells[0]) &&
+    /10 ingredients are listed/.test(dupeSmells[0]),
+  dupeSmells[0],
+);
+check(
+  "the smell states the remedy — list it once, where it first goes in",
+  /listed ONCE, at the step that first puts it in/.test(dupeSmells[0]) &&
+    /must not repeat it/.test(dupeSmells[0]),
+  dupeSmells[0],
+);
+check(
+  "a repeated-ingredient tree is still VALID, only suspect",
+  validateRecipe(duplicated).ok,
+  JSON.stringify(validateRecipe(duplicated)),
+);
+check(
+  "the correctly nested soup repeats nothing, so it stays clean",
+  inspect(boursinGood).length === 0,
+  JSON.stringify(inspect(boursinGood)),
+);
+
+// Rule 3's one real exception: the same line in two SEPARATE branches, each copy
+// noting which use it is. That is a genuine split, not a repeat.
+const split = {
+  title: "x",
+  sections: [
+    {
+      tree: step("combine", "", [
+        step("sear", "", [ing("1 Tbs olive oil", "for searing"), ing("2 chicken thighs")]),
+        step("simmer", "", [ing("1 Tbs olive oil", "for the sauce"), ing("1 can tomatoes")]),
+      ]),
+    },
+  ],
+};
+check(
+  "the same line in two branches, each with its own note, is left alone",
+  inspect(split).length === 0,
+  JSON.stringify(inspect(split)),
+);
+
+// The prompt is the real lever — a guard only catches what the prompt let through.
+check(
+  "rule 3 now says an ingredient is listed once, not once per use",
+  /An ingredient is listed ONCE, at the step that first puts it in\./.test(SYSTEM_PROMPT) &&
+    !/used at more than one stage appears once per use/.test(SYSTEM_PROMPT),
+);
+check(
+  "rule 8's example no longer tells the model to give each step its own ingredients",
+  !/each holding its own ingredients/.test(SYSTEM_PROMPT) &&
+    /The vegetables are listed once, in the first of the three/.test(SYSTEM_PROMPT),
+);
+check(
+  "the new rule states what an operation's children are",
+  /An operation's children are exactly what it consumes/.test(SYSTEM_PROMPT),
+);
+check(
+  "simple mode's flat list has the same rule",
+  /An ingredient joins at the FIRST step that uses it and at no later one/.test(SIMPLE_SYSTEM_PROMPT),
+);
+check(
+  "the reshape prompt can ask for a repeat to be removed",
+  /an ingredient is listed ONCE, at the step that first/.test(reshape),
+  reshape.slice(-520),
 );
 
 // ------------------------------------------------------------------ simple mode

@@ -87,15 +87,26 @@ Valid is not the same as complete: a model once wrote "cook until golden" and ne
 wrote the onion. When the page has structured data, `missingIngredients()` diffs the
 source's ingredient list against the returned tree by word overlap, and a gap gets
 one repair round (a warning in the log if it survives it — an incomplete table still
-renders). `inspect()` reports two legal-but-wrong shapes for one reconsideration round:
-a fan of sibling operations that should have been a chain, and an operation whose
+renders). `inspect()` reports three legal-but-wrong shapes for one reconsideration
+round: a fan of sibling operations that should have been a chain; an operation whose
 detail names an ingredient that is not where the detail puts it (the table
 contradicting its own text — "transfer … along with the broth" on a cell that does not
-hold the broth). The second is judged two ways: a detail that *adds* an ingredient
-("along with", "stir in") demands it as a **direct child**, while one that merely
-refers to it ("until the potatoes are tender") is satisfied by it lying anywhere
-beneath — so broth drawn under the transfer's own `bake` child is still a smell.
-Shape reconsideration is rejected if it would drop coverage.
+hold the broth); and the same ingredient listed more than once in a section, which is
+how a model "gives each operation its own ingredients" (the Boursin soup returned with
+the vegetables under `add`, again under `toss`, again under `bake`). The second is
+judged two ways: a detail that *adds* an ingredient ("along with", "stir in") demands
+it as a **direct child**, while one that merely refers to it ("until the potatoes are
+tender") is satisfied by it lying anywhere beneath — so broth drawn under the
+transfer's own `bake` child is still a smell. The third allows rule 3's one real
+exception — an ingredient genuinely used in two separate branches — but only when each
+copy carries its own note. Shape reconsideration is rejected if it would drop coverage.
+
+The tree carries ingredients forward: an ingredient goes in once, at the step that
+first puts it in, and everything nested above reaches it by being nested there. That
+is what rules 3, 5d and 8 of `SYSTEM_PROMPT` say between them, and it is the concept
+the model gets wrong most often — an operation's children are what it *consumes*
+(ingredients it introduces, plus the earlier operation whose output it acts on), never
+an ingredient that already arrived through one of them.
 
 Three asks, in descending ambition — the whole point is that a weak model still
 produces something:

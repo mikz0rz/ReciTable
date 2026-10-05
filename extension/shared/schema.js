@@ -591,6 +591,57 @@ function strayMention(node, where, all, smells) {
   for (const child of node.children) strayMention(child, where, all, smells);
 }
 
+/** Every ingredient leaf in the section, in tree order. */
+function leaves(node, out) {
+  if (isIngredient(node)) {
+    out.push(node);
+    return;
+  }
+  for (const child of node?.children || []) leaves(child, out);
+}
+
+/** "1 Tbs olive oil" and "1 Tbs  Olive Oil" are the same line to a reader. */
+const itemKey = (node) => String(node.item || node.name || "").trim().toLowerCase().replace(/\s+/g, " ");
+
+/**
+ * The same ingredient listed twice in one section. The tree carries things
+ * forward: an ingredient goes in ONCE, at the step that first puts it in, and
+ * every step nested above consumes it by nesting. Repeating it is how a model
+ * "gives each operation its own ingredients" — the Boursin soup came back with
+ * the vegetables under `add`, again under `toss`, and again under `bake`. Rule 3
+ * is the one real exception — an ingredient that genuinely goes into two separate
+ * branches — and it requires a note on each copy saying which use it is, so a
+ * repeated line with no distinguishing note is the defect, not the exception.
+ */
+function repeats(node, where, smells) {
+  const found = [];
+  leaves(node, found);
+  const groups = new Map();
+  for (const leaf of found) {
+    const key = itemKey(leaf);
+    if (!key) continue;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(leaf);
+  }
+  const repeated = [];
+  for (const [, group] of groups) {
+    if (group.length < 2) continue;
+    const notes = new Set(group.map((leaf) => String(leaf.note || "").trim()).filter(Boolean));
+    if (notes.size < group.length) repeated.push(group);
+  }
+  if (!repeated.length) return;
+  const list = repeated
+    .map((group) => `"${String(group[0].item || group[0].name).trim()}" ×${group.length}`)
+    .join(", ");
+  const many = repeated.length === 1 ? "An ingredient is" : `${repeated.length} ingredients are`;
+  smells.push(
+    `${where}: ${many} listed more than once — ${list}. An ingredient is listed ONCE, at the ` +
+      `step that first puts it in; the steps nested above consume it by being nested there, so ` +
+      `they must not repeat it. If one genuinely goes into two separate branches, give each copy ` +
+      `a note saying which use it is.`,
+  );
+}
+
 /** Legal but suspect shapes, for one reconsideration round. */
 export function inspect(recipe) {
   const smells = [];
@@ -599,6 +650,7 @@ export function inspect(recipe) {
     const where = section.name ? `section "${section.name}"` : `section ${i + 1}`;
     const all = new Set();
     ingredientWords(section.tree, all);
+    repeats(section.tree, where, smells);
     fanIn(section.tree, where, smells);
     strayMention(section.tree, where, all, smells);
   }
