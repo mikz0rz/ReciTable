@@ -5,6 +5,22 @@ the renderer's markup bumps major, features bump minor, fixes bump patch. Each
 release is tagged in git (`v0.2.0`) so `git diff v0.1.0..v0.2.0` shows exactly
 what moved, and `git checkout v0.1.0` gets the old state back.
 
+## 0.3.0 — 2026-10-05
+
+- An ingredient is sequenced into the operation whose detail adds it. The Boursin
+  butternut squash soup came back as one chain with the broth written as a child
+  of a detail-less `stir` — after `simmer` — while the transfer cell's own detail
+  said "along with the broth". The model had also filed the source's "prep the veg
+  and add them to the dish" under `prep`, so every ingredient landed in the `bake`
+  cell and the toss and nestle steps vanished. Two prompt rules close that: `prep`
+  holds only steps that add no ingredient — however the source words an
+  ingredient-adding step, it is an operation — and an ingredient belongs inside the
+  operation whose detail names it, not the one that merely ends up containing it.
+- A second shape smell, alongside the flattened-fan one: an operation whose detail
+  names an ingredient lying outside its own subtree — the table contradicting its
+  own text. The fan smell never fires on a chain, so this one catches a misplaced
+  leaf. It rides the same one-round reconsideration, which stays non-fatal.
+
 ## 0.2.1 — 2026-09-22
 
 - Branch order in the tree is now cooking order. Rule 7 said "put the base
