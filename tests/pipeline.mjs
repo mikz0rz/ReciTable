@@ -559,10 +559,34 @@ check(
 );
 check(
   "the smell says where the ingredient belongs",
-  /move it inside "transfer"/.test(straySmells[0]),
+  /move "broth" inside "transfer"/.test(straySmells[0]),
   straySmells[0],
 );
 check("the misplaced-ingredient shape is still VALID, only suspect", validateRecipe(boursinBad).ok);
+
+// The same page run again: half and half came back, but the broth landed inside
+// "bake" — one level deeper than the transfer whose detail adds it. Beneath is not
+// enough for a detail that ADDS: an added ingredient must be a direct child.
+const boursinBakedBroth = structuredClone(boursinBad);
+const stir = boursinBakedBroth.sections[0].tree.children[0];
+const broth = stir.children.pop(); // out of "stir"…
+const transfer = stir.children[0].children[0].children[0];
+transfer.children[0].children.push(broth); // …into "bake"
+const bakedSmells = inspect(boursinBakedBroth);
+check(
+  "an added ingredient nested one level too deep is still flagged",
+  bakedSmells.length === 1 && /"transfer"/.test(bakedSmells[0]) && /"broth"/.test(bakedSmells[0]),
+  JSON.stringify(bakedSmells),
+);
+check(
+  "and it says the ingredient must be a direct child, not merely beneath",
+  /not one of its own children — it is nested deeper/.test(bakedSmells[0]),
+  bakedSmells[0],
+);
+check(
+  "the nested-deeper shape is still VALID, only suspect",
+  validateRecipe(boursinBakedBroth).ok,
+);
 
 // Sequenced correctly — the broth nested inside the transfer whose detail names it,
 // every detail naming its own children — the same recipe has nothing to complain

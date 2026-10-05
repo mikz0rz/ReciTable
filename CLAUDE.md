@@ -89,8 +89,12 @@ source's ingredient list against the returned tree by word overlap, and a gap ge
 one repair round (a warning in the log if it survives it — an incomplete table still
 renders). `inspect()` reports two legal-but-wrong shapes for one reconsideration round:
 a fan of sibling operations that should have been a chain, and an operation whose
-detail names an ingredient lying outside its own subtree (the table contradicting its
-own text — "transfer … along with the broth" on a cell that does not hold the broth).
+detail names an ingredient that is not where the detail puts it (the table
+contradicting its own text — "transfer … along with the broth" on a cell that does not
+hold the broth). The second is judged two ways: a detail that *adds* an ingredient
+("along with", "stir in") demands it as a **direct child**, while one that merely
+refers to it ("until the potatoes are tender") is satisfied by it lying anywhere
+beneath — so broth drawn under the transfer's own `bake` child is still a smell.
 Shape reconsideration is rejected if it would drop coverage.
 
 Three asks, in descending ambition — the whole point is that a weak model still

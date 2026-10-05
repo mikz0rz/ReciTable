@@ -5,6 +5,17 @@ the renderer's markup bumps major, features bump minor, fixes bump patch. Each
 release is tagged in git (`v0.2.0`) so `git diff v0.1.0..v0.2.0` shows exactly
 what moved, and `git checkout v0.1.0` gets the old state back.
 
+## 0.3.1 — 2026-10-05
+
+- The misplaced-ingredient smell from 0.3.0 was too easy to satisfy. On a re-run
+  of the same soup the broth came back inside `bake` — a child of the transfer's
+  own child — so it was still "beneath" the cell whose detail says "along with
+  the broth", and the guard stayed quiet on the same defect it was written for.
+  A detail that *adds* an ingredient ("along with", "stir in", "pour in") now
+  demands it as a **direct child**; only a detail that merely refers to one
+  ("until the potatoes are tender") is satisfied by it lying anywhere beneath.
+  Prompt-only rules were not enough — the model kept finding the deeper shape.
+
 ## 0.3.0 — 2026-10-05
 
 - An ingredient is sequenced into the operation whose detail adds it. The Boursin

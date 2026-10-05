@@ -536,6 +536,11 @@ function fanIn(node, where, smells) {
   for (const child of node.children) fanIn(child, where, smells);
 }
 
+/** Words that mean an operation is putting an ingredient IN. "return" is left out
+ *  on purpose — "return to a simmer" is a reference, not an addition. */
+const ADDS =
+  /\b(add|adds|adding|along with|stir in|stir into|pour in|mix in|whisk in|fold in|toss in)\b/i;
+
 /** Distinctive words of an ingredient's name. Unquantified ingredients ("Kosher
  *  salt") carry no "name", so the "item" stands in for them. */
 function ingredientWords(node, out) {
@@ -546,27 +551,41 @@ function ingredientWords(node, out) {
   for (const child of node.children || []) ingredientWords(child, out);
 }
 
+/** The same, but only for the operation's own ingredient children — not the ones
+ *  nested inside an operation it combines. */
+function directIngredientWords(node, out) {
+  for (const child of node.children || []) {
+    if (isIngredient(child)) {
+      for (const word of coverTokens(child.name || child.item || "")) out.add(word);
+    }
+  }
+}
+
 /**
- * An operation whose detail names an ingredient that lies outside its own
- * subtree. "Transfer … along with the broth" on a cell that does not hold the
- * broth is the table contradicting its own text: the broth is drawn joining a
- * later step than the one that adds it, which reads as a step out of sequence.
- * That is a different failure from a fan — one misplaced leaf rather than a
- * flattened chain — but it earns the same single reconsideration.
+ * An operation whose detail names an ingredient it does not hold. Two shapes.
+ * A detail that *adds* an ingredient — "along with the broth" — must hold it as a
+ * direct child, so broth written one level deeper (baked with the vegetables, or
+ * stirred in a later step) is the table contradicting its own text. A detail that
+ * merely refers to one ("until the potatoes are tender") must at least have it
+ * somewhere beneath, which is why the two are judged differently. Both read as a
+ * step out of sequence and earn the same single reconsideration.
  */
 function strayMention(node, where, all, smells) {
   if (!node || typeof node !== "object" || !Array.isArray(node.children)) return;
-  const here = new Set();
-  ingredientWords(node, here);
-  const named = [...new Set(coverTokens(node.detail || ""))].filter(
-    (word) => all.has(word) && !here.has(word),
-  );
-  if (named.length) {
+  const beneath = new Set();
+  const direct = new Set();
+  ingredientWords(node, beneath);
+  directIngredientWords(node, direct);
+  const adds = ADDS.test(node.detail || "");
+  const named = [...new Set(coverTokens(node.detail || ""))].filter((word) => all.has(word));
+  const wrong = named.filter((word) => (adds ? !direct.has(word) : !beneath.has(word)));
+  if (wrong.length) {
+    const list = wrong.map((word) => `"${word}"`).join(", ");
     smells.push(
-      `${where}: the detail of "${node.op}" mentions ${named.map((w) => `"${w}"`).join(", ")}, ` +
-        `but no ingredient by that name sits inside "${node.op}". An ingredient belongs in the ` +
-        `operation whose detail adds it — move it inside "${node.op}", out of the later step it ` +
-        "was written in.",
+      `${where}: the detail of "${node.op}" names ${list}, but ${list} is not ` +
+        `${adds ? "one of its own children — it is nested deeper" : "anywhere inside it"}. ` +
+        `An ingredient belongs in the operation whose detail adds it — move ${list} inside ` +
+        `"${node.op}".`,
     );
   }
   for (const child of node.children) strayMention(child, where, all, smells);
